@@ -43,7 +43,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
 	font: inherit;
 }
 
@@ -393,6 +394,25 @@ button:focus {
 	transform: translateY(-1px);
 }
 
+.icon-only {
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	display: inline-grid;
+	place-items: center;
+	border-radius: 999px;
+}
+
+.language-switch {
+	border: 1px solid #35526a;
+	border-radius: 999px;
+	background: #173046;
+	color: #d9e8f5;
+	height: 38px;
+	padding: 0 12px;
+	cursor: pointer;
+}
+
 .with-loader {
 	display: inline-flex;
 	align-items: center;
@@ -598,6 +618,79 @@ button:focus {
 	margin-bottom: 16px;
 	display: flex;
 	justify-content: center;
+}
+
+.status-panel {
+	display: grid;
+	gap: 12px;
+}
+
+.status-card {
+	border: 1px solid;
+	border-radius: 14px;
+	padding: 14px;
+}
+
+.status-ok {
+	background: rgba(24, 58, 45, 0.45);
+	border-color: #2f755c;
+}
+
+.status-fail {
+	background: rgba(64, 27, 34, 0.45);
+	border-color: #8a4350;
+}
+
+.status-title {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 8px;
+	font-weight: 700;
+}
+
+.status-copy .muted {
+	margin: 6px 0;
+}
+
+.profile-page {
+	display: grid;
+	gap: 16px;
+}
+
+.profile-head {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 12px;
+	align-items: center;
+}
+
+.profile-head h2 {
+	margin: 0;
+}
+
+.profile-icon {
+	font-size: 56px;
+	color: #93d0ff;
+}
+
+.profile-form {
+	display: grid;
+	gap: 10px;
+}
+
+.profile-form label {
+	display: grid;
+	gap: 8px;
+	color: #d9e6f2;
+}
+
+.profile-form select {
+	border: 1px solid #31506a;
+	border-radius: 10px;
+	padding: 10px 12px;
+	background: #0f1f30;
+	color: var(--text);
 }
 
 .muted {

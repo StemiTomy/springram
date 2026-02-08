@@ -35,6 +35,9 @@ public class User {
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
+	@Column(name = "preferred_language", nullable = false, length = 5)
+	private String preferredLanguage = "es";
+
 	protected User() {
 	}
 
@@ -45,6 +48,25 @@ public class User {
 		this.role = role;
 		this.enabled = enabled;
 		this.createdAt = createdAt;
+		this.preferredLanguage = "es";
+	}
+
+	public User(
+			UUID id,
+			String email,
+			String passwordHash,
+			UserRole role,
+			boolean enabled,
+			Instant createdAt,
+			String preferredLanguage
+	) {
+		this.id = id;
+		this.email = email;
+		this.passwordHash = passwordHash;
+		this.role = role;
+		this.enabled = enabled;
+		this.createdAt = createdAt;
+		this.preferredLanguage = preferredLanguage;
 	}
 
 	@PrePersist
@@ -81,6 +103,10 @@ public class User {
 		return createdAt;
 	}
 
+	public String getPreferredLanguage() {
+		return preferredLanguage;
+	}
+
 	public void setEmail(String email) {
 		this.email = email;
 	}
@@ -95,5 +121,9 @@ public class User {
 
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
+	}
+
+	public void setPreferredLanguage(String preferredLanguage) {
+		this.preferredLanguage = preferredLanguage;
 	}
 }

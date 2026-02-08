@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.stelut.demostracion.auth.state.UserLanguagePreferenceState;
 import com.stelut.demostracion.auth.dto.AuthResponse;
 import com.stelut.demostracion.auth.dto.LoginRequest;
 import com.stelut.demostracion.auth.dto.RefreshRequest;
@@ -18,6 +19,7 @@ import com.stelut.demostracion.user.UserRepository;
 import com.stelut.demostracion.user.UserRole;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -35,19 +37,22 @@ public class AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
 	private final JwtDecoder jwtDecoder;
+	private final ObjectProvider<UserLanguagePreferenceState> languageStateProvider;
 
 	public AuthService(
 			UserRepository userRepository,
 			RefreshTokenRepository refreshTokenRepository,
 			PasswordEncoder passwordEncoder,
 			JwtService jwtService,
-			JwtDecoder jwtDecoder
+			JwtDecoder jwtDecoder,
+			ObjectProvider<UserLanguagePreferenceState> languageStateProvider
 	) {
 		this.userRepository = userRepository;
 		this.refreshTokenRepository = refreshTokenRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
 		this.jwtDecoder = jwtDecoder;
+		this.languageStateProvider = languageStateProvider;
 	}
 
 	public AuthResponse register(RegisterRequest request) {
@@ -108,6 +113,26 @@ public class AuthService {
 		return issueTokens(user);
 	}
 
+	@Transactional(readOnly = true)
+	public String getPreferredLanguage(UUID userId) {
+		User user = findUserById(userId);
+		UserLanguagePreferenceState languageState = languageStateProvider.getObject();
+		languageState.initialize(user.getId(), user.getPreferredLanguage());
+		return languageState.language();
+	}
+
+	public String updatePreferredLanguage(UUID userId, String requestedLanguage) {
+		User user = findUserById(userId);
+
+		UserLanguagePreferenceState languageState = languageStateProvider.getObject();
+		languageState.initialize(user.getId(), user.getPreferredLanguage());
+		languageState.apply(requestedLanguage);
+
+		user.setPreferredLanguage(languageState.language());
+		userRepository.save(user);
+		return languageState.language();
+	}
+
 	private Jwt decodeRefreshToken(String refreshToken) {
 		try {
 			Jwt jwt = jwtDecoder.decode(refreshToken);
@@ -139,5 +164,10 @@ public class AuthService {
 
 	private String normalizeEmail(String email) {
 		return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private User findUserById(UUID userId) {
+		return userRepository.findById(userId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found"));
 	}
 }

@@ -3,8 +3,10 @@ services:
     build: .
     restart: unless-stopped
     depends_on:
-      - redis
-      - kafka
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     logging:
       options:
         max-size: '10m'
@@ -27,6 +29,12 @@ services:
       - 'APP_SOCIAL_REDIS_STATS_TTL=${APP_SOCIAL_REDIS_STATS_TTL:-PT24H}'
       - 'APP_SOCIAL_REDIS_LIKES_TTL=${APP_SOCIAL_REDIS_LIKES_TTL:-PT24H}'
       - 'APP_SOCIAL_REDIS_POSTS_TTL=${APP_SOCIAL_REDIS_POSTS_TTL:-PT168H}'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   redis:
     image: 'redis:7.4-alpine'
@@ -38,6 +46,12 @@ services:
         max-file: '3'
     volumes:
       - 'redis_data:/data'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   kafka:
     image: 'apache/kafka:3.9.0'
@@ -62,6 +76,12 @@ services:
       - 'CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk'
     volumes:
       - 'kafka_data:/tmp/kraft-combined-logs'
+    healthcheck:
+      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1']
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
 
 volumes:
   redis_data:

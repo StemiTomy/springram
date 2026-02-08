@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import './style.css';
 
-type RoutePath = '/' | '/auth' | '/app' | '/search';
+type RoutePath = '/' | '/auth' | '/app' | '/search' | '/status' | '/profile';
+type Language = 'es' | 'en';
 
 type AuthResponse = {
 	accessToken: string;
@@ -17,6 +18,11 @@ type UserResponse = {
 	id: string;
 	email: string;
 	role: string;
+	preferredLanguage: string;
+};
+
+type LanguagePreferenceResponse = {
+	language: string;
 };
 
 type PostResponse = {
@@ -84,11 +90,267 @@ type SearchResultsPageResponse = {
 	totalPages: number;
 };
 
+type ReadinessResponse = {
+	status: string;
+	components?: Record<string, { status: string }>;
+};
+
 type Session = AuthResponse;
 
+type Messages = {
+	loginRegister: string;
+	searchPosts: string;
+	searchUsers: string;
+	searchPlaceholderPosts: string;
+	searchPlaceholderUsers: string;
+	searching: string;
+	searchNoSuggestions: string;
+	searchShowMore: string;
+	landingKicker: string;
+	landingDescription: string;
+	createAccount: string;
+	signIn: string;
+	registerTitle: string;
+	loginTitle: string;
+	apiConnection: string;
+	email: string;
+	password: string;
+	processing: string;
+	registerButton: string;
+	loginButton: string;
+	feedTitle: string;
+	postsCount: string;
+	composerPlaceholder: string;
+	publishing: string;
+	publish: string;
+	loadingFeed: string;
+	emptyFeed: string;
+	commentPlaceholder: string;
+	send: string;
+	loadMorePosts: string;
+	loadingMore: string;
+	searchResultsTitle: string;
+	searchResultsFor: string;
+	backToFeed: string;
+	loadingResults: string;
+	emptyResults: string;
+	loadMoreResults: string;
+	statusTitle: string;
+	statusDescription: string;
+	statusChecking: string;
+	statusOkTitle: string;
+	statusOkDescription: string;
+	statusFailTitle: string;
+	statusFailDescription: string;
+	checkAgain: string;
+	profileTitle: string;
+	profileDescription: string;
+	profileLanguageLabel: string;
+	saveLanguage: string;
+	savingLanguage: string;
+	logout: string;
+	openProfile: string;
+	view: string;
+	like: string;
+	unlike: string;
+	comment: string;
+	registerSuccess: string;
+	loginSuccess: string;
+	postPublished: string;
+	commentSent: string;
+	languageUpdated: string;
+	authInvalid: string;
+	authConflict: string;
+	authFailed: string;
+	feedFailed: string;
+	profileFailed: string;
+	createPostFailed: string;
+	commentFailed: string;
+	likeFailed: string;
+	unlikeFailed: string;
+	searchFailed: string;
+	viewFailed: string;
+	statusButton: string;
+	statusEndpointLabel: string;
+	statusRequestFailed: string;
+	statsPosts: string;
+	statsLikes: string;
+	statsComments: string;
+	statsViews: string;
+};
+
+const I18N: Record<Language, Messages> = {
+	es: {
+		loginRegister: 'Registro / Login',
+		searchPosts: 'Posts',
+		searchUsers: 'Usuarios',
+		searchPlaceholderPosts: 'Buscar posts...',
+		searchPlaceholderUsers: 'Buscar usuarios...',
+		searching: 'Buscando...',
+		searchNoSuggestions: 'Sin sugerencias',
+		searchShowMore: 'Ver más resultados',
+		landingKicker: 'Backend social con Spring Boot 4',
+		landingDescription:
+			'Demo full-stack para aprender arquitectura real de API REST social: Spring Boot, JWT, Flyway, PostgreSQL (Neon), Redis, Kafka, Docker Compose y observabilidad con Actuator/Micrometer.',
+		createAccount: 'Crear cuenta',
+		signIn: 'Iniciar sesión',
+		registerTitle: 'Registro',
+		loginTitle: 'Login',
+		apiConnection: 'Conexión API',
+		email: 'Email',
+		password: 'Password',
+		processing: 'Procesando...',
+		registerButton: 'Registrarse',
+		loginButton: 'Entrar',
+		feedTitle: 'Feed',
+		postsCount: 'Publicaciones',
+		composerPlaceholder: 'Comparte algo en Springram...',
+		publishing: 'Publicando...',
+		publish: 'Publicar',
+		loadingFeed: 'Cargando feed...',
+		emptyFeed: 'No hay posts todavía. Crea uno o carga seed con scripts/main.py.',
+		commentPlaceholder: 'Comentar...',
+		send: 'Enviar',
+		loadMorePosts: 'Más posts',
+		loadingMore: 'Cargando más...',
+		searchResultsTitle: 'Resultados',
+		searchResultsFor: 'para',
+		backToFeed: 'Volver al feed',
+		loadingResults: 'Cargando resultados...',
+		emptyResults: 'No hay resultados para esa búsqueda.',
+		loadMoreResults: 'Más resultados',
+		statusTitle: 'Estado del servicio',
+		statusDescription: 'Comprobación de readiness del backend.',
+		statusChecking: 'Comprobando estado...',
+		statusOkTitle: 'Servicio operativo',
+		statusOkDescription: 'Readiness en UP. El backend está listo para atender tráfico.',
+		statusFailTitle: 'Estamos revisando el servicio',
+		statusFailDescription: 'Readiness no está en UP o no responde. Lo estamos mirando.',
+		checkAgain: 'Comprobar otra vez',
+		profileTitle: 'Perfil',
+		profileDescription: 'Gestiona tu idioma preferido para la interfaz.',
+		profileLanguageLabel: 'Idioma preferido',
+		saveLanguage: 'Guardar idioma',
+		savingLanguage: 'Guardando...',
+		logout: 'Salir',
+		openProfile: 'Abrir perfil',
+		view: 'Vista',
+		like: 'Dar like',
+		unlike: 'Quitar like',
+		comment: 'Comentar',
+		registerSuccess: 'Registro completado.',
+		loginSuccess: 'Login correcto.',
+		postPublished: 'Post publicado.',
+		commentSent: 'Comentario enviado.',
+		languageUpdated: 'Idioma actualizado.',
+		authInvalid: 'Credenciales o formato inválido.',
+		authConflict: 'El email ya existe.',
+		authFailed: 'No se pudo completar la operación.',
+		feedFailed: 'No se pudo cargar el feed.',
+		profileFailed: 'No se pudo cargar el perfil.',
+		createPostFailed: 'No se pudo crear el post.',
+		commentFailed: 'No se pudo comentar.',
+		likeFailed: 'No se pudo dar like.',
+		unlikeFailed: 'No se pudo quitar el like.',
+		searchFailed: 'No se pudieron cargar resultados de búsqueda.',
+		viewFailed: 'No se pudo registrar vista.',
+		statusButton: 'Status',
+		statusEndpointLabel: 'Endpoint',
+		statusRequestFailed: 'No se pudo consultar el endpoint de readiness.',
+		statsPosts: 'Posts',
+		statsLikes: 'Likes',
+		statsComments: 'Comentarios',
+		statsViews: 'Vistas',
+	},
+	en: {
+		loginRegister: 'Register / Login',
+		searchPosts: 'Posts',
+		searchUsers: 'Users',
+		searchPlaceholderPosts: 'Search posts...',
+		searchPlaceholderUsers: 'Search users...',
+		searching: 'Searching...',
+		searchNoSuggestions: 'No suggestions',
+		searchShowMore: 'See more results',
+		landingKicker: 'Social backend with Spring Boot 4',
+		landingDescription:
+			'Full-stack demo to learn real social REST API architecture: Spring Boot, JWT, Flyway, PostgreSQL (Neon), Redis, Kafka, Docker Compose, and observability with Actuator/Micrometer.',
+		createAccount: 'Create account',
+		signIn: 'Sign in',
+		registerTitle: 'Register',
+		loginTitle: 'Login',
+		apiConnection: 'API connection',
+		email: 'Email',
+		password: 'Password',
+		processing: 'Processing...',
+		registerButton: 'Register',
+		loginButton: 'Sign in',
+		feedTitle: 'Feed',
+		postsCount: 'Posts',
+		composerPlaceholder: 'Share something on Springram...',
+		publishing: 'Publishing...',
+		publish: 'Publish',
+		loadingFeed: 'Loading feed...',
+		emptyFeed: 'No posts yet. Create one or run seed with scripts/main.py.',
+		commentPlaceholder: 'Comment...',
+		send: 'Send',
+		loadMorePosts: 'More posts',
+		loadingMore: 'Loading more...',
+		searchResultsTitle: 'Results',
+		searchResultsFor: 'for',
+		backToFeed: 'Back to feed',
+		loadingResults: 'Loading results...',
+		emptyResults: 'No results for this query.',
+		loadMoreResults: 'More results',
+		statusTitle: 'Service status',
+		statusDescription: 'Backend readiness check.',
+		statusChecking: 'Checking status...',
+		statusOkTitle: 'Service is up',
+		statusOkDescription: 'Readiness is UP. Backend is ready to serve traffic.',
+		statusFailTitle: 'We are investigating service status',
+		statusFailDescription: 'Readiness is not UP or is unreachable. We are checking it.',
+		checkAgain: 'Check again',
+		profileTitle: 'Profile',
+		profileDescription: 'Manage your preferred interface language.',
+		profileLanguageLabel: 'Preferred language',
+		saveLanguage: 'Save language',
+		savingLanguage: 'Saving...',
+		logout: 'Logout',
+		openProfile: 'Open profile',
+		view: 'View',
+		like: 'Like',
+		unlike: 'Unlike',
+		comment: 'Comment',
+		registerSuccess: 'Registration completed.',
+		loginSuccess: 'Login successful.',
+		postPublished: 'Post published.',
+		commentSent: 'Comment posted.',
+		languageUpdated: 'Language updated.',
+		authInvalid: 'Invalid credentials or format.',
+		authConflict: 'Email already exists.',
+		authFailed: 'Operation could not be completed.',
+		feedFailed: 'Could not load feed.',
+		profileFailed: 'Could not load profile.',
+		createPostFailed: 'Could not create post.',
+		commentFailed: 'Could not post comment.',
+		likeFailed: 'Could not like post.',
+		unlikeFailed: 'Could not unlike post.',
+		searchFailed: 'Could not load search results.',
+		viewFailed: 'Could not register view.',
+		statusButton: 'Status',
+		statusEndpointLabel: 'Endpoint',
+		statusRequestFailed: 'Could not query readiness endpoint.',
+		statsPosts: 'Posts',
+		statsLikes: 'Likes',
+		statsComments: 'Comments',
+		statsViews: 'Views',
+	},
+};
+
 const SESSION_KEY = 'springram_session_v1';
+const LANGUAGE_KEY = 'springram_language_v1';
 const FEED_PAGE_SIZE = 20;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:8080';
+const READINESS_ENDPOINT = `${API_BASE_URL}/actuator/health/readiness`;
 
 function toHandle(displayName: string): string {
 	return displayName
@@ -138,6 +400,12 @@ function normalizePath(pathname: string): RoutePath {
 	if (pathname === '/search') {
 		return '/search';
 	}
+	if (pathname === '/status') {
+		return '/status';
+	}
+	if (pathname === '/profile') {
+		return '/profile';
+	}
 	return '/';
 }
 
@@ -165,6 +433,19 @@ function writeSession(session: Session | null): void {
 		return;
 	}
 	window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function normalizeLanguage(value?: string): Language {
+	return (value || '').trim().toLowerCase() === 'en' ? 'en' : 'es';
+}
+
+function readLanguage(): Language {
+	const raw = window.localStorage.getItem(LANGUAGE_KEY);
+	return normalizeLanguage(raw || 'es');
+}
+
+function writeLanguage(language: Language): void {
+	window.localStorage.setItem(LANGUAGE_KEY, language);
 }
 
 async function refreshSession(session: Session): Promise<Session | null> {
@@ -226,7 +507,9 @@ async function apiFetch(
 function App() {
 	const [route, setRoute] = useState<RoutePath>(normalizePath(window.location.pathname));
 	const [session, setSessionState] = useState<Session | null>(readSession());
+	const [language, setLanguageState] = useState<Language>(readLanguage());
 	const [profile, setProfile] = useState<UserResponse | null>(null);
+	const [profileLanguageDraft, setProfileLanguageDraft] = useState<Language>('es');
 	const [feed, setFeed] = useState<PostResponse[]>([]);
 	const [feedMeta, setFeedMeta] = useState<{ page: number; totalPages: number; totalElements: number }>({
 		page: 0,
@@ -238,6 +521,10 @@ function App() {
 	const [loadingFeed, setLoadingFeed] = useState(false);
 	const [loadingPost, setLoadingPost] = useState(false);
 	const [loadingMore, setLoadingMore] = useState(false);
+	const [loadingLanguageSave, setLoadingLanguageSave] = useState(false);
+	const [statusLoading, setStatusLoading] = useState(false);
+	const [statusResponse, setStatusResponse] = useState<ReadinessResponse | null>(null);
+	const [statusError, setStatusError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [postContent, setPostContent] = useState('');
@@ -261,6 +548,7 @@ function App() {
 	const pendingViewTimersRef = useRef<Map<string, number>>(new Map());
 
 	const isAuthenticated = Boolean(session?.accessToken);
+	const t = I18N[language];
 
 	const setSession = (value: Session | null) => {
 		writeSession(value);
@@ -268,6 +556,11 @@ function App() {
 		if (!value) {
 			setProfile(null);
 		}
+	};
+
+	const setLanguage = (value: Language) => {
+		writeLanguage(value);
+		setLanguageState(value);
 	};
 
 	useEffect(() => {
@@ -290,7 +583,7 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if ((route === '/app' || route === '/search') && !isAuthenticated) {
+		if ((route === '/app' || route === '/search' || route === '/profile') && !isAuthenticated) {
 			navigate('/auth');
 		}
 	}, [route, isAuthenticated]);
@@ -333,7 +626,7 @@ function App() {
 		);
 
 		if (!response.ok) {
-			throw new Error('No se pudo cargar el feed.');
+			throw new Error(t.feedFailed);
 		}
 
 		const payload = (await response.json()) as FeedResponse;
@@ -351,10 +644,14 @@ function App() {
 		}
 		const meRes = await apiFetch('/api/v1/auth/me', { method: 'GET' }, session, setSession);
 		if (meRes.ok) {
-			setProfile((await meRes.json()) as UserResponse);
+			const user = (await meRes.json()) as UserResponse;
+			const preferredLanguage = normalizeLanguage(user.preferredLanguage);
+			setProfile(user);
+			setProfileLanguageDraft(preferredLanguage);
+			setLanguage(preferredLanguage);
 			return;
 		}
-		throw new Error('No se pudo cargar el perfil.');
+		throw new Error(t.profileFailed);
 	};
 
 	const loadProfileAndFeed = async () => {
@@ -367,7 +664,7 @@ function App() {
 			await loadProfile();
 			await loadFeedPage(0, false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error inesperado');
+			setError(err instanceof Error ? err.message : t.feedFailed);
 		} finally {
 			setLoadingFeed(false);
 		}
@@ -386,7 +683,7 @@ function App() {
 		try {
 			await loadFeedPage(feedMeta.page + 1, true);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error inesperado');
+			setError(err instanceof Error ? err.message : t.feedFailed);
 		} finally {
 			setLoadingMore(false);
 		}
@@ -408,7 +705,7 @@ function App() {
 			setSession,
 		);
 		if (!response.ok) {
-			throw new Error('No se pudieron cargar resultados de búsqueda.');
+			throw new Error(t.searchFailed);
 		}
 		const payload = (await response.json()) as SearchResultsPageResponse;
 		setSearchResults((prev) => (append ? [...prev, ...payload.items] : payload.items));
@@ -441,7 +738,7 @@ function App() {
 		try {
 			await loadSearchPage(activeSearch.query, activeSearch.type, searchResultsMeta.page + 1, true);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error inesperado');
+			setError(err instanceof Error ? err.message : t.searchFailed);
 		} finally {
 			setSearchResultsLoadingMore(false);
 		}
@@ -467,20 +764,20 @@ function App() {
 
 			if (!response.ok) {
 				const message = response.status === 400
-					? 'Credenciales o formato inválido.'
+					? t.authInvalid
 					: response.status === 409
-						? 'El email ya existe.'
-						: 'No se pudo completar la operación.';
+						? t.authConflict
+						: t.authFailed;
 				throw new Error(message);
 			}
 
 			const payload = (await response.json()) as Session;
 			setSession(payload);
 			navigate('/app');
-			setInfo(authMode === 'register' ? 'Registro completado.' : 'Login correcto.');
+			setInfo(authMode === 'register' ? t.registerSuccess : t.loginSuccess);
 			form.reset();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error inesperado');
+			setError(err instanceof Error ? err.message : t.authFailed);
 		} finally {
 			setLoadingAuth(false);
 		}
@@ -505,17 +802,67 @@ function App() {
 				setSession,
 			);
 			if (!response.ok) {
-				throw new Error('No se pudo crear el post.');
+				throw new Error(t.createPostFailed);
 			}
 			const created = (await response.json()) as PostResponse;
 			setFeed((prev) => [created, ...prev]);
 			setFeedMeta((prev) => ({ ...prev, totalElements: prev.totalElements + 1 }));
 			setPostContent('');
-			setInfo('Post publicado.');
+			setInfo(t.postPublished);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Error inesperado');
+			setError(err instanceof Error ? err.message : t.createPostFailed);
 		} finally {
 			setLoadingPost(false);
+		}
+	};
+
+	const checkReadiness = async () => {
+		setStatusLoading(true);
+		setStatusError(null);
+		try {
+			const response = await fetch(READINESS_ENDPOINT, { method: 'GET' });
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+			const payload = (await response.json()) as ReadinessResponse;
+			setStatusResponse(payload);
+		} catch (err) {
+			setStatusResponse(null);
+			setStatusError(err instanceof Error ? err.message : t.statusRequestFailed);
+		} finally {
+			setStatusLoading(false);
+		}
+	};
+
+	const savePreferredLanguage = async () => {
+		if (!session || !profile) {
+			return;
+		}
+		setLoadingLanguageSave(true);
+		setError(null);
+		setInfo(null);
+		try {
+			const response = await apiFetch(
+				'/api/v1/auth/preferences/language',
+				{
+					method: 'PUT',
+					body: JSON.stringify({ language: profileLanguageDraft }),
+				},
+				session,
+				setSession,
+			);
+			if (!response.ok) {
+				throw new Error(t.authFailed);
+			}
+			const payload = (await response.json()) as LanguagePreferenceResponse;
+			const updated = normalizeLanguage(payload.language);
+			setLanguage(updated);
+			setProfile((prev) => (prev ? { ...prev, preferredLanguage: updated } : prev));
+			setInfo(t.languageUpdated);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : t.authFailed);
+		} finally {
+			setLoadingLanguageSave(false);
 		}
 	};
 
@@ -526,7 +873,7 @@ function App() {
 	}, [route, session?.accessToken]);
 
 	useEffect(() => {
-		if (route === '/search' && session && !profile) {
+		if ((route === '/search' || route === '/profile') && session && !profile) {
 			void loadProfile().catch(() => {
 				// handled by auth/session flow if token is invalid
 			});
@@ -541,10 +888,17 @@ function App() {
 		setError(null);
 		void loadSearchPage(activeSearch.query, activeSearch.type, 0, false)
 			.catch((err) => {
-				setError(err instanceof Error ? err.message : 'Error inesperado');
+				setError(err instanceof Error ? err.message : t.searchFailed);
 			})
 			.finally(() => setSearchResultsLoading(false));
 	}, [route, session?.accessToken, activeSearch.query, activeSearch.type]);
+
+	useEffect(() => {
+		if (route !== '/status') {
+			return;
+		}
+		void checkReadiness();
+	}, [route]);
 
 	useEffect(() => {
 		if ((route !== '/app' && route !== '/search') || !session) {
@@ -568,7 +922,7 @@ function App() {
 					setSession,
 				);
 				if (!response.ok) {
-					throw new Error('No se pudieron cargar sugerencias.');
+					throw new Error(t.searchFailed);
 				}
 				const payload = (await response.json()) as SearchSuggestionsResponse;
 				setSearchItems(payload.items);
@@ -582,7 +936,6 @@ function App() {
 
 		return () => window.clearTimeout(timer);
 	}, [route, session?.accessToken, searchQuery, searchType]);
-
 
 	const updatePostStats = (stats: PostStatsResponse) => {
 		setFeed((prev) =>
@@ -611,7 +964,7 @@ function App() {
 		const response = await apiFetch(`/api/v1/posts/${postId}/view`, { method: 'POST' }, session, setSession);
 		if (!response.ok) {
 			if (!silent) {
-				setError('No se pudo registrar vista.');
+				setError(t.viewFailed);
 			}
 			return;
 		}
@@ -639,7 +992,7 @@ function App() {
 			setSession,
 		);
 		if (!response.ok) {
-			setError(`No se pudo ${likedByMe ? 'quitar el like' : 'dar like'}.`);
+			setError(likedByMe ? t.unlikeFailed : t.likeFailed);
 			return;
 		}
 		const stats = (await response.json()) as PostStatsResponse;
@@ -672,14 +1025,14 @@ function App() {
 			setSession,
 		);
 		if (!response.ok) {
-			setError('No se pudo comentar.');
+			setError(t.commentFailed);
 			return;
 		}
 		setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
 		setFeed((prev) =>
 			prev.map((item) => (item.id === postId ? { ...item, comments: item.comments + 1 } : item)),
 		);
-		setInfo('Comentario enviado.');
+		setInfo(t.commentSent);
 	};
 
 	const logout = () => {
@@ -769,6 +1122,8 @@ function App() {
 		};
 	}, [route, session?.accessToken, feed]);
 
+	const statusIsUp = statusResponse?.status === 'UP';
+
 	return (
 		<div class="shell">
 			<header class="topbar">
@@ -781,13 +1136,13 @@ function App() {
 								value={searchType}
 								onChange={(event) => setSearchType((event.currentTarget as HTMLSelectElement).value as SearchType)}
 							>
-								<option value="posts">Posts</option>
-								<option value="users">Usuarios</option>
+								<option value="posts">{t.searchPosts}</option>
+								<option value="users">{t.searchUsers}</option>
 							</select>
 							<input
 								class="search-input"
 								value={searchQuery}
-								placeholder={searchType === 'posts' ? 'Buscar posts...' : 'Buscar usuarios...'}
+								placeholder={searchType === 'posts' ? t.searchPlaceholderPosts : t.searchPlaceholderUsers}
 								onInput={(event) => setSearchQuery((event.currentTarget as HTMLInputElement).value)}
 								onKeyDown={(event) => {
 									if ((event as KeyboardEvent).key === 'Enter') {
@@ -805,9 +1160,9 @@ function App() {
 						{searchOpen ? (
 							<div class="search-dropdown">
 								{searchLoading ? (
-									<div class="search-status muted">Buscando...</div>
+									<div class="search-status muted">{t.searching}</div>
 								) : searchItems.length === 0 ? (
-									<div class="search-status muted">Sin sugerencias</div>
+									<div class="search-status muted">{t.searchNoSuggestions}</div>
 								) : (
 									searchItems.map((item) => (
 										<button
@@ -828,24 +1183,36 @@ function App() {
 								)}
 								{searchQuery.trim() ? (
 									<button type="button" class="search-more" onClick={openSearchResults}>
-										Ver más resultados
+										{t.searchShowMore}
 									</button>
 								) : null}
 							</div>
 						) : null}
 					</div>
 				) : null}
-				{(route === '/app' || route === '/search') && profile ? (
+				{isAuthenticated ? (
 					<div class="profile-panel">
-						<span>{profile.email}</span>
+						<button class="ghost" onClick={() => navigate('/status')}>{t.statusButton}</button>
+						<button class="ghost icon-only" onClick={() => navigate('/profile')} aria-label={t.openProfile}>
+							<span class="material-symbols-rounded ui-icon" aria-hidden="true">account_circle</span>
+						</button>
 						<button class="ghost with-icon" onClick={logout}>
 							<span class="material-symbols-rounded ui-icon" aria-hidden="true">exit_to_app</span>
-							Salir
+							{t.logout}
 						</button>
 					</div>
 				) : (
 					<nav class="top-actions">
-						<button class="ghost" onClick={() => navigate('/auth')}>Registro / Login</button>
+						<select
+							class="language-switch"
+							value={language}
+							onChange={(event) => setLanguage((event.currentTarget as HTMLSelectElement).value as Language)}
+						>
+							<option value="es">ES</option>
+							<option value="en">EN</option>
+						</select>
+						<button class="ghost" onClick={() => navigate('/status')}>{t.statusButton}</button>
+						<button class="ghost" onClick={() => navigate('/auth')}>{t.loginRegister}</button>
 					</nav>
 				)}
 			</header>
@@ -853,12 +1220,9 @@ function App() {
 			<main class="content">
 				{route === '/' && (
 					<section class="hero-card">
-						<p class="kicker">Backend social con Spring Boot 4</p>
+						<p class="kicker">{t.landingKicker}</p>
 						<h1>{appTitle}</h1>
-						<p>
-							Demo full-stack para aprender arquitectura real de API REST social: Spring Boot, JWT,
-							Flyway, PostgreSQL (Neon), Redis, Kafka, Docker Compose y observabilidad con Actuator/Micrometer.
-						</p>
+						<p>{t.landingDescription}</p>
 						<div class="stack-grid">
 							<span>Spring Security + JWT</span>
 							<span>Flyway + PostgreSQL</span>
@@ -868,59 +1232,133 @@ function App() {
 							<span>OpenAPI + Metrics</span>
 						</div>
 						<div class="cta-row">
-							<button class="solid" onClick={() => { setAuthMode('register'); navigate('/auth'); }}>Crear cuenta</button>
-							<button class="ghost" onClick={() => { setAuthMode('login'); navigate('/auth'); }}>Iniciar sesión</button>
+							<button class="solid" onClick={() => { setAuthMode('register'); navigate('/auth'); }}>{t.createAccount}</button>
+							<button class="ghost" onClick={() => { setAuthMode('login'); navigate('/auth'); }}>{t.signIn}</button>
+						</div>
+					</section>
+				)}
+
+				{route === '/status' && (
+					<section class="panel status-panel">
+						<h2>{t.statusTitle}</h2>
+						<p class="muted">{t.statusDescription}</p>
+						<p class="muted"><strong>{t.statusEndpointLabel}:</strong> <code>{READINESS_ENDPOINT}</code></p>
+						<div class={statusIsUp ? 'status-card status-ok' : 'status-card status-fail'}>
+							{statusLoading ? (
+								<p class="muted loading-line">
+									<span class="spinner" aria-hidden="true" /> {t.statusChecking}
+								</p>
+							) : statusIsUp ? (
+								<div class="status-copy">
+									<p class="status-title">
+										<span class="material-symbols-rounded ui-icon" aria-hidden="true">check_circle</span>
+										{t.statusOkTitle}
+									</p>
+									<p class="muted">{t.statusOkDescription}</p>
+									<p class="muted"><code>{JSON.stringify(statusResponse)}</code></p>
+								</div>
+							) : (
+								<div class="status-copy">
+									<p class="status-title">
+										<span class="material-symbols-rounded ui-icon" aria-hidden="true">error</span>
+										{t.statusFailTitle}
+									</p>
+									<p class="muted">{t.statusFailDescription}</p>
+									{statusError ? <p class="muted"><code>{statusError}</code></p> : null}
+									{statusResponse ? <p class="muted"><code>{JSON.stringify(statusResponse)}</code></p> : null}
+								</div>
+							)}
+						</div>
+						<div class="cta-row">
+							<button class="solid" onClick={() => void checkReadiness()}>{t.checkAgain}</button>
+							{isAuthenticated ? <button class="ghost" onClick={() => navigate('/app')}>{t.backToFeed}</button> : null}
 						</div>
 					</section>
 				)}
 
 				{route === '/auth' && (
 					<section class="panel auth-panel">
-						<h2>{authMode === 'register' ? 'Registro' : 'Login'}</h2>
-						<p class="muted">Conexión API: <code>{API_BASE_URL}</code></p>
+						<h2>{authMode === 'register' ? t.registerTitle : t.loginTitle}</h2>
+						<p class="muted">{t.apiConnection}: <code>{API_BASE_URL}</code></p>
 						<div class="mode-row">
-							<button class={authMode === 'register' ? 'tab active' : 'tab'} onClick={() => setAuthMode('register')}>Registro</button>
-							<button class={authMode === 'login' ? 'tab active' : 'tab'} onClick={() => setAuthMode('login')}>Login</button>
+							<button class={authMode === 'register' ? 'tab active' : 'tab'} onClick={() => setAuthMode('register')}>{t.registerTitle}</button>
+							<button class={authMode === 'login' ? 'tab active' : 'tab'} onClick={() => setAuthMode('login')}>{t.loginTitle}</button>
 						</div>
 						<form class="auth-form" onSubmit={submitAuth}>
 							<label>
-								Email
+								{t.email}
 								<input name="email" type="email" required placeholder="name@domain.com" />
 							</label>
 							<label>
-								Password
+								{t.password}
 								<input name="password" type="password" required minLength={8} placeholder="Password123!" />
 							</label>
 							<button class="solid with-loader" disabled={loadingAuth} type="submit">
 								{loadingAuth ? (
 									<>
 										<span class="spinner" aria-hidden="true" />
-										Procesando...
+										{t.processing}
 									</>
-								) : authMode === 'register' ? 'Registrarse' : 'Entrar'}
+								) : authMode === 'register' ? t.registerButton : t.loginButton}
 							</button>
 						</form>
 					</section>
 				)}
 
+				{route === '/profile' && profile && (
+					<section class="panel profile-page">
+						<div class="profile-head">
+							<span class="material-symbols-rounded profile-icon" aria-hidden="true">account_circle</span>
+							<div>
+								<h2>{t.profileTitle}</h2>
+								<p class="muted">{t.profileDescription}</p>
+								<p class="muted"><strong>{profile.email}</strong></p>
+							</div>
+						</div>
+						<div class="profile-form">
+							<label>
+								{t.profileLanguageLabel}
+								<select
+									value={profileLanguageDraft}
+									onChange={(event) => setProfileLanguageDraft((event.currentTarget as HTMLSelectElement).value as Language)}
+								>
+									<option value="es">Espanol (ES)</option>
+									<option value="en">English (EN)</option>
+								</select>
+							</label>
+							<div class="cta-row">
+								<button class="solid with-loader" disabled={loadingLanguageSave} onClick={() => void savePreferredLanguage()}>
+									{loadingLanguageSave ? (
+										<>
+											<span class="spinner" aria-hidden="true" />
+											{t.savingLanguage}
+										</>
+									) : t.saveLanguage}
+								</button>
+								<button class="ghost" onClick={() => navigate('/app')}>{t.backToFeed}</button>
+							</div>
+						</div>
+					</section>
+				)}
+
 				{route === '/search' && (
 					<section class="panel app-panel">
-							<div class="search-results-head">
-								<h2>Resultados</h2>
-								<p class="muted">
-									{activeSearch.type === 'posts' ? 'Posts' : 'Usuarios'} para "<strong>{activeSearch.query}</strong>" · {searchResultsMeta.totalElements}
-								</p>
-							<button class="ghost" onClick={() => navigate('/app')}>Volver al feed</button>
+						<div class="search-results-head">
+							<h2>{t.searchResultsTitle}</h2>
+							<p class="muted">
+								{activeSearch.type === 'posts' ? t.searchPosts : t.searchUsers} {t.searchResultsFor} "<strong>{activeSearch.query}</strong>" · {searchResultsMeta.totalElements}
+							</p>
+							<button class="ghost" onClick={() => navigate('/app')}>{t.backToFeed}</button>
 						</div>
 
 						{searchResultsLoading ? (
 							<p class="muted loading-line">
-								<span class="spinner" aria-hidden="true" /> Cargando resultados...
+								<span class="spinner" aria-hidden="true" /> {t.loadingResults}
 							</p>
 						) : null}
 
 						{!searchResultsLoading && searchResults.length === 0 ? (
-							<p class="muted search-empty">No hay resultados para esa búsqueda.</p>
+							<p class="muted search-empty">{t.emptyResults}</p>
 						) : null}
 
 						<div class="feed-list">
@@ -945,7 +1383,7 @@ function App() {
 													<button
 														class={item.likedByMe ? 'action-item liked' : 'action-item neutral'}
 														onClick={() => void toggleLike(item.id, item.likedByMe)}
-														aria-label={item.likedByMe ? 'Quitar like' : 'Dar like'}
+														aria-label={item.likedByMe ? t.unlike : t.like}
 													>
 														<span class={item.likedByMe ? 'material-symbols-rounded action-icon filled-icon' : 'material-symbols-rounded action-icon'} aria-hidden="true">favorite</span>
 														<span>{item.likes}</span>
@@ -953,7 +1391,7 @@ function App() {
 													<button
 														class="action-item neutral"
 														onClick={() => void reactToPost(item.id, 'view')}
-														aria-label="Registrar vista"
+														aria-label={t.view}
 													>
 														<span class="material-symbols-rounded action-icon" aria-hidden="true">visibility</span>
 														<span>{item.views}</span>
@@ -974,10 +1412,10 @@ function App() {
 													<time>{toRelativeTime(item.createdAt)}</time>
 												</div>
 												<div class="stats-row user-stats-row">
-													<span>Posts: {item.posts}</span>
-													<span>Likes: {item.likes}</span>
-													<span>Comments: {item.comments}</span>
-													<span>Views: {item.views}</span>
+													<span>{t.statsPosts}: {item.posts}</span>
+													<span>{t.statsLikes}: {item.likes}</span>
+													<span>{t.statsComments}: {item.comments}</span>
+													<span>{t.statsViews}: {item.views}</span>
 												</div>
 											</div>
 										</div>
@@ -992,9 +1430,9 @@ function App() {
 									{searchResultsLoadingMore ? (
 										<>
 											<span class="spinner" aria-hidden="true" />
-											Cargando más...
+											{t.loadingMore}
 										</>
-									) : 'Más resultados'}
+									) : t.loadMoreResults}
 								</button>
 							</div>
 						) : null}
@@ -1003,14 +1441,14 @@ function App() {
 
 				{route === '/app' && (
 					<section class="panel app-panel">
-						<h2>Feed</h2>
-						<p class="muted">Publicaciones: {feedMeta.totalElements}</p>
+						<h2>{t.feedTitle}</h2>
+						<p class="muted">{t.postsCount}: {feedMeta.totalElements}</p>
 
 						<form class="composer" onSubmit={submitNewPost}>
 							<textarea
 								value={postContent}
 								onInput={(e) => setPostContent((e.currentTarget as HTMLTextAreaElement).value)}
-								placeholder="Comparte algo en Springram..."
+								placeholder={t.composerPlaceholder}
 								maxLength={4000}
 								required
 							/>
@@ -1018,19 +1456,19 @@ function App() {
 								{loadingPost ? (
 									<>
 										<span class="spinner" aria-hidden="true" />
-										Publicando...
+										{t.publishing}
 									</>
-								) : 'Publicar'}
+								) : t.publish}
 							</button>
 						</form>
 
 						{loadingFeed ? (
 							<p class="muted loading-line">
-								<span class="spinner" aria-hidden="true" /> Cargando feed...
+								<span class="spinner" aria-hidden="true" /> {t.loadingFeed}
 							</p>
 						) : null}
 						{!loadingFeed && feed.length === 0 ? (
-							<p class="muted">No hay posts todavía. Crea uno o carga seed con `scripts/main.py`.</p>
+							<p class="muted">{t.emptyFeed}</p>
 						) : null}
 
 						<div class="feed-list">
@@ -1047,19 +1485,19 @@ function App() {
 											</div>
 											<p class="post-text">{post.content}</p>
 											<div class="post-actions">
-												<div class="action-item neutral">
+												<div class="action-item neutral" aria-label={t.comment}>
 													<span class="material-symbols-rounded action-icon" aria-hidden="true">comment</span>
 													<span>{post.comments}</span>
 												</div>
 												<button
 													class={post.likedByMe ? 'action-item liked' : 'action-item neutral'}
 													onClick={() => void toggleLike(post.id, post.likedByMe)}
-													aria-label={post.likedByMe ? 'Quitar like' : 'Dar like'}
+													aria-label={post.likedByMe ? t.unlike : t.like}
 												>
 													<span class={post.likedByMe ? 'material-symbols-rounded action-icon filled-icon' : 'material-symbols-rounded action-icon'} aria-hidden="true">favorite</span>
 													<span>{post.likes}</span>
 												</button>
-												<div class="action-item neutral" aria-label="Vistas">
+												<div class="action-item neutral" aria-label={t.view}>
 													<span class="material-symbols-rounded action-icon" aria-hidden="true">visibility</span>
 													<span>{post.views}</span>
 												</div>
@@ -1068,7 +1506,7 @@ function App() {
 									</div>
 									<form class="comment-form" onSubmit={(e) => void submitComment(e, post.id)}>
 										<input
-											placeholder="Comentar..."
+											placeholder={t.commentPlaceholder}
 											maxLength={2000}
 											value={commentDrafts[post.id] || ''}
 											onInput={(e) => {
@@ -1076,7 +1514,7 @@ function App() {
 												setCommentDrafts((prev) => ({ ...prev, [post.id]: value }));
 											}}
 										/>
-										<button class="solid" type="submit">Enviar</button>
+										<button class="solid" type="submit">{t.send}</button>
 									</form>
 								</article>
 							))}
@@ -1088,9 +1526,9 @@ function App() {
 									{loadingMore ? (
 										<>
 											<span class="spinner" aria-hidden="true" />
-											Cargando más...
+											{t.loadingMore}
 										</>
-									) : 'Más posts'}
+									) : t.loadMorePosts}
 								</button>
 							</div>
 						) : null}

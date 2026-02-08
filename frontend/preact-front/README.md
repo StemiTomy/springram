@@ -32,6 +32,7 @@ npm run preview
 
 - Landing (`/`) con intro del proyecto y stack usado.
 - Registro/Login (`/auth`) contra `/api/v1/auth/register|login`.
+- Status (`/status`) consultando `GET /actuator/health/readiness`.
 - Perfil y logout en cabecera (`/app`).
 - Feed de posts (`/api/v1/posts/feed`) con acciones `like`, `view`, `comment`.
 - Composer para crear post (`POST /api/v1/posts`).

@@ -4,6 +4,7 @@ Demostración de [Stelut Grigore Tomoiaga](https://steluttomoiaga.com)
 # Lanzar app
 
 Todo se levanta con Docker Compose (`app` + `redis` + `kafka`). La BBDD maestra sigue siendo remota y se configura en `.env`.
+Compose incluye `healthcheck` en `app`, `redis` y `kafka`, y `app` espera a que `redis/kafka` esten saludables para arrancar.
 
 ## Variables mínimas:
 
@@ -29,6 +30,12 @@ docker compose up -d --build
 
 # Logs
 docker compose logs -f app
+```
+
+Comprobar readiness manualmente:
+
+```bash
+curl http://localhost:8080/actuator/health/readiness
 ```
 
 Logs en fichero (persistidos en la raíz del proyecto):
@@ -220,6 +227,8 @@ Auth:
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `GET /api/v1/auth/me` (requiere `Authorization: Bearer <token>`)
+- `GET /api/v1/auth/preferences/language` (requiere token)
+- `PUT /api/v1/auth/preferences/language` (body: `{ "language": "es" | "en" }`)
 
 Posts (requiere `Authorization: Bearer <token>`):
 
