@@ -1,9 +1,32 @@
 import { render } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import {
+	BarElement,
+	CategoryScale,
+	Chart as ChartJS,
+	Filler,
+	Legend,
+	LineElement,
+	LinearScale,
+	PointElement,
+	Tooltip as ChartTooltip,
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
 
 import './style.css';
 
-type RoutePath = '/' | '/auth' | '/app' | '/search' | '/status' | '/profile';
+ChartJS.register(
+	CategoryScale,
+	LinearScale,
+	PointElement,
+	LineElement,
+	BarElement,
+	ChartTooltip,
+	Legend,
+	Filler,
+);
+
+type RoutePath = '/' | '/auth' | '/app' | '/search' | '/status' | '/profile' | '/summary';
 type Language = 'es' | 'en';
 
 type AuthResponse = {
@@ -95,6 +118,41 @@ type ReadinessResponse = {
 	components?: Record<string, { status: string }>;
 };
 
+type AnalyticsWord = {
+	word: string;
+	count: number;
+};
+
+type AnalyticsTopPost = {
+	postId: string;
+	authorDisplayName: string;
+	contentPreview: string;
+	createdAt: string;
+	likes: number;
+	views: number;
+	comments: number;
+};
+
+type AnalyticsHourly = {
+	hour: number;
+	posts: number;
+};
+
+type AnalyticsDaily = {
+	day: string;
+	posts: number;
+};
+
+type AnalyticsSummaryResponse = {
+	generatedAt: string;
+	totalPosts: number;
+	totalUsers: number;
+	topWords: AnalyticsWord[];
+	topPosts: AnalyticsTopPost[];
+	hourlyHeatmap: AnalyticsHourly[];
+	postsEvolution: AnalyticsDaily[];
+};
+
 type Session = AuthResponse;
 
 type Messages = {
@@ -177,6 +235,32 @@ type Messages = {
 	statsLikes: string;
 	statsComments: string;
 	statsViews: string;
+	summaryButton: string;
+	summaryTitle: string;
+	summaryDescription: string;
+	summaryLoading: string;
+	summaryError: string;
+	summaryGeneratedAt: string;
+	summaryTotalPosts: string;
+	summaryTotalUsers: string;
+	summaryTopWords: string;
+	summaryTopPosts: string;
+	summaryHourlyHeatmap: string;
+	summaryPostsEvolution: string;
+	summaryNoData: string;
+	summarySeriesPosts: string;
+	summarySeriesHourlyPosts: string;
+	examplesTitle: string;
+	examplesSubtitle: string;
+	exampleLazyTitle: string;
+	exampleStatelessTitle: string;
+	examplePrototypeTitle: string;
+	tryMeTitle: string;
+	tryMeSubtitle: string;
+	tryMeRegister: string;
+	tryMeDemoLogin: string;
+	demoEmailLabel: string;
+	demoPasswordLabel: string;
 };
 
 const I18N: Record<Language, Messages> = {
@@ -261,6 +345,32 @@ const I18N: Record<Language, Messages> = {
 		statsLikes: 'Likes',
 		statsComments: 'Comentarios',
 		statsViews: 'Vistas',
+		summaryButton: 'Estadistica de la red social (lazy)',
+		summaryTitle: 'Estadistica de la red social (lazy)',
+		summaryDescription: 'Resumen global calculado bajo demanda desde el endpoint lazy.',
+		summaryLoading: 'Generando resumen (lazy)...',
+		summaryError: 'No se pudo cargar el resumen.',
+		summaryGeneratedAt: 'Generado',
+		summaryTotalPosts: 'Total posts',
+		summaryTotalUsers: 'Total usuarios',
+		summaryTopWords: 'Top palabras',
+		summaryTopPosts: 'Top posts',
+		summaryHourlyHeatmap: 'Heatmap por hora',
+		summaryPostsEvolution: 'Evolucion diaria (30 dias)',
+		summaryNoData: 'Sin datos suficientes para mostrar.',
+		summarySeriesPosts: 'Posts',
+		summarySeriesHourlyPosts: 'Posts por hora',
+		examplesTitle: 'Ejemplos de Beans en este proyecto',
+		examplesSubtitle: 'Lazy para estadisticas pesadas, stateless para logica reutilizable y prototype para estado por usuario sin choques.',
+		exampleLazyTitle: 'Lazy Bean: analytics bajo demanda',
+		exampleStatelessTitle: 'Stateless Bean: servicio sin estado compartido',
+		examplePrototypeTitle: 'Prototype Bean: preferencia de idioma por usuario',
+		tryMeTitle: '¡Pruébame!',
+		tryMeSubtitle: 'Entra rapido a Springram con registro o login demo.',
+		tryMeRegister: 'Registro',
+		tryMeDemoLogin: 'Login demo',
+		demoEmailLabel: 'Demo email',
+		demoPasswordLabel: 'Demo password',
 	},
 	en: {
 		loginRegister: 'Register / Login',
@@ -343,6 +453,32 @@ const I18N: Record<Language, Messages> = {
 		statsLikes: 'Likes',
 		statsComments: 'Comments',
 		statsViews: 'Views',
+		summaryButton: 'Social network stats (lazy)',
+		summaryTitle: 'Social network stats (lazy)',
+		summaryDescription: 'Global summary computed on demand from the lazy endpoint.',
+		summaryLoading: 'Generating summary (lazy)...',
+		summaryError: 'Could not load summary.',
+		summaryGeneratedAt: 'Generated',
+		summaryTotalPosts: 'Total posts',
+		summaryTotalUsers: 'Total users',
+		summaryTopWords: 'Top words',
+		summaryTopPosts: 'Top posts',
+		summaryHourlyHeatmap: 'Hourly heatmap',
+		summaryPostsEvolution: 'Daily evolution (30 days)',
+		summaryNoData: 'Not enough data to display.',
+		summarySeriesPosts: 'Posts',
+		summarySeriesHourlyPosts: 'Posts per hour',
+		examplesTitle: 'Bean examples in this project',
+		examplesSubtitle: 'Lazy for heavy analytics, stateless for reusable logic, and prototype for per-user state without collisions.',
+		exampleLazyTitle: 'Lazy Bean: on-demand analytics',
+		exampleStatelessTitle: 'Stateless Bean: service with no shared mutable state',
+		examplePrototypeTitle: 'Prototype Bean: user language preference',
+		tryMeTitle: 'Try me!',
+		tryMeSubtitle: 'Jump into Springram quickly with register or demo login.',
+		tryMeRegister: 'Register',
+		tryMeDemoLogin: 'Demo login',
+		demoEmailLabel: 'Demo email',
+		demoPasswordLabel: 'Demo password',
 	},
 };
 
@@ -351,6 +487,9 @@ const LANGUAGE_KEY = 'springram_language_v1';
 const FEED_PAGE_SIZE = 20;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:8080';
 const READINESS_ENDPOINT = `${API_BASE_URL}/actuator/health/readiness`;
+const ANALYTICS_SUMMARY_ENDPOINT = `${API_BASE_URL}/api/v1/analytics/summary`;
+const DEMO_EMAIL = 'test@test.test';
+const DEMO_PASSWORD = 'Password123!';
 
 function toHandle(displayName: string): string {
 	return displayName
@@ -390,6 +529,14 @@ function toRelativeTime(isoDate: string): string {
 	return `${days}d`;
 }
 
+function buildWordFontSize(count: number, maxCount: number): number {
+	if (maxCount <= 0) {
+		return 14;
+	}
+	const ratio = count / maxCount;
+	return Math.round(13 + ratio * 14);
+}
+
 function normalizePath(pathname: string): RoutePath {
 	if (pathname === '/auth') {
 		return '/auth';
@@ -405,6 +552,9 @@ function normalizePath(pathname: string): RoutePath {
 	}
 	if (pathname === '/profile') {
 		return '/profile';
+	}
+	if (pathname === '/summary') {
+		return '/summary';
 	}
 	return '/';
 }
@@ -517,6 +667,8 @@ function App() {
 		totalElements: 0,
 	});
 	const [authMode, setAuthMode] = useState<'register' | 'login'>('login');
+	const [authEmail, setAuthEmail] = useState('');
+	const [authPassword, setAuthPassword] = useState('');
 	const [loadingAuth, setLoadingAuth] = useState(false);
 	const [loadingFeed, setLoadingFeed] = useState(false);
 	const [loadingPost, setLoadingPost] = useState(false);
@@ -525,6 +677,9 @@ function App() {
 	const [statusLoading, setStatusLoading] = useState(false);
 	const [statusResponse, setStatusResponse] = useState<ReadinessResponse | null>(null);
 	const [statusError, setStatusError] = useState<string | null>(null);
+	const [summaryLoading, setSummaryLoading] = useState(false);
+	const [summaryResponse, setSummaryResponse] = useState<AnalyticsSummaryResponse | null>(null);
+	const [summaryError, setSummaryError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [postContent, setPostContent] = useState('');
@@ -543,6 +698,7 @@ function App() {
 	const [activeSearch, setActiveSearch] = useState<{ query: string; type: SearchType }>({ query: '', type: 'posts' });
 	const [searchResultsLoading, setSearchResultsLoading] = useState(false);
 	const [searchResultsLoadingMore, setSearchResultsLoadingMore] = useState(false);
+	const [showScrollTop, setShowScrollTop] = useState(false);
 	const searchBoxRef = useRef<HTMLDivElement | null>(null);
 	const viewedPostIdsRef = useRef<Set<string>>(new Set());
 	const pendingViewTimersRef = useRef<Map<string, number>>(new Map());
@@ -567,6 +723,15 @@ function App() {
 		const onPopState = () => setRoute(normalizePath(window.location.pathname));
 		window.addEventListener('popstate', onPopState);
 		return () => window.removeEventListener('popstate', onPopState);
+	}, []);
+
+	useEffect(() => {
+		const onScroll = () => {
+			setShowScrollTop(window.scrollY > 420);
+		};
+		onScroll();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => window.removeEventListener('scroll', onScroll);
 	}, []);
 
 	useEffect(() => {
@@ -746,10 +911,8 @@ function App() {
 
 	const submitAuth = async (event: Event) => {
 		event.preventDefault();
-		const form = event.currentTarget as HTMLFormElement;
-		const data = new FormData(form);
-		const email = String(data.get('email') || '').trim();
-		const password = String(data.get('password') || '');
+		const email = authEmail.trim();
+		const password = authPassword;
 
 		setError(null);
 		setInfo(null);
@@ -774,8 +937,8 @@ function App() {
 			const payload = (await response.json()) as Session;
 			setSession(payload);
 			navigate('/app');
-			setInfo(authMode === 'register' ? t.registerSuccess : t.loginSuccess);
-			form.reset();
+			setAuthEmail('');
+			setAuthPassword('');
 		} catch (err) {
 			setError(err instanceof Error ? err.message : t.authFailed);
 		} finally {
@@ -831,6 +994,24 @@ function App() {
 			setStatusError(err instanceof Error ? err.message : t.statusRequestFailed);
 		} finally {
 			setStatusLoading(false);
+		}
+	};
+
+	const loadAnalyticsSummary = async () => {
+		setSummaryLoading(true);
+		setSummaryError(null);
+		try {
+			const response = await fetch(ANALYTICS_SUMMARY_ENDPOINT, { method: 'GET' });
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+			const payload = (await response.json()) as AnalyticsSummaryResponse;
+			setSummaryResponse(payload);
+		} catch (err) {
+			setSummaryResponse(null);
+			setSummaryError(err instanceof Error ? err.message : t.summaryError);
+		} finally {
+			setSummaryLoading(false);
 		}
 	};
 
@@ -898,6 +1079,21 @@ function App() {
 			return;
 		}
 		void checkReadiness();
+	}, [route]);
+
+	useEffect(() => {
+		if (!info) {
+			return;
+		}
+		const timer = window.setTimeout(() => setInfo(null), 2600);
+		return () => window.clearTimeout(timer);
+	}, [info]);
+
+	useEffect(() => {
+		if (route !== '/summary') {
+			return;
+		}
+		void loadAnalyticsSummary();
 	}, [route]);
 
 	useEffect(() => {
@@ -1037,6 +1233,8 @@ function App() {
 
 	const logout = () => {
 		setSession(null);
+		setInfo(null);
+		setError(null);
 		setSearchQuery('');
 		setSearchItems([]);
 		setSearchOpen(false);
@@ -1068,6 +1266,21 @@ function App() {
 	const appTitle = useMemo(() => 'Springram by Stelut Tomoiaga', []);
 	const handleBrandClick = () => {
 		navigate(isAuthenticated ? '/app' : '/');
+	};
+	const scrollToTop = () => {
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
+	const openRegister = () => {
+		setAuthMode('register');
+		setAuthEmail('');
+		setAuthPassword('');
+		navigate('/auth');
+	};
+	const openDemoLogin = () => {
+		setAuthMode('login');
+		setAuthEmail(DEMO_EMAIL);
+		setAuthPassword(DEMO_PASSWORD);
+		navigate('/auth');
 	};
 
 	useEffect(() => {
@@ -1123,6 +1336,136 @@ function App() {
 	}, [route, session?.accessToken, feed]);
 
 	const statusIsUp = statusResponse?.status === 'UP';
+	const localeTag = language === 'en' ? 'en-US' : 'es-ES';
+
+	const dailyChartData = useMemo(() => {
+		if (!summaryResponse) {
+			return null;
+		}
+		return {
+			labels: summaryResponse.postsEvolution.map((item) =>
+				new Date(`${item.day}T00:00:00Z`).toLocaleDateString(localeTag, { month: 'short', day: '2-digit' }),
+			),
+			datasets: [
+				{
+					label: t.summarySeriesPosts,
+					data: summaryResponse.postsEvolution.map((item) => item.posts),
+					borderColor: '#4caf50',
+					backgroundColor: 'rgba(76, 175, 80, 0.2)',
+					borderWidth: 2,
+					pointRadius: 2,
+					fill: true,
+					tension: 0.35,
+				},
+			],
+		};
+	}, [summaryResponse, t.summarySeriesPosts, localeTag]);
+
+	const hourlyBarData = useMemo(() => {
+		if (!summaryResponse) {
+			return null;
+		}
+		return {
+			labels: summaryResponse.hourlyHeatmap.map((item) => `${item.hour.toString().padStart(2, '0')}:00`),
+			datasets: [
+				{
+					label: t.summarySeriesHourlyPosts,
+					data: summaryResponse.hourlyHeatmap.map((item) => item.posts),
+					backgroundColor: 'rgba(29, 155, 240, 0.6)',
+					borderColor: '#1d9bf0',
+					borderWidth: 1,
+					borderRadius: 4,
+				},
+			],
+		};
+	}, [summaryResponse, t.summarySeriesHourlyPosts]);
+
+	const commonChartOptions = useMemo(
+		() => ({
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: {
+					labels: { color: '#c6d7e8' },
+				},
+			},
+			scales: {
+				x: {
+					ticks: { color: '#95abc0', maxRotation: 0 },
+					grid: { color: 'rgba(255,255,255,0.08)' },
+				},
+				y: {
+					beginAtZero: true,
+					ticks: { color: '#95abc0' },
+					grid: { color: 'rgba(255,255,255,0.08)' },
+				},
+			},
+		}),
+		[],
+	);
+
+	const beanExamples = useMemo(() => {
+		if (language === 'en') {
+			return {
+				lazy: `@Component
+@Lazy
+public class HeavyAnalyticsEngine {
+  public AnalyticsSummaryResponse computeSummary() {
+    // topWords, topPosts, hourlyHeatmap, postsEvolution
+    return ...;
+  }
+}`,
+				stateless: `@Service
+public class AnalyticsService {
+  private final HeavyAnalyticsEngine engine;
+
+  public AnalyticsSummaryResponse summary() {
+    return engine.computeSummary(); // no mutable shared state
+  }
+}`,
+				prototype: `@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+public class UserLanguagePreferenceState {
+  private UUID userId;
+  private String language; // es | en
+}
+
+// in singleton service:
+UserLanguagePreferenceState state = provider.getObject();
+state.initialize(userId, currentLanguage);
+state.apply(requestedLanguage);`,
+			};
+		}
+		return {
+			lazy: `@Component
+@Lazy
+public class HeavyAnalyticsEngine {
+  public AnalyticsSummaryResponse computeSummary() {
+    // topWords, topPosts, hourlyHeatmap, postsEvolution
+    return ...;
+  }
+}`,
+			stateless: `@Service
+public class AnalyticsService {
+  private final HeavyAnalyticsEngine engine;
+
+  public AnalyticsSummaryResponse summary() {
+    return engine.computeSummary(); // sin estado mutable compartido
+  }
+}`,
+			prototype: `@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+public class UserLanguagePreferenceState {
+  private UUID userId;
+  private String language; // es | en
+}
+
+// dentro de un servicio singleton:
+UserLanguagePreferenceState state = provider.getObject();
+state.initialize(userId, currentLanguage);
+state.apply(requestedLanguage);`,
+		};
+	}, [language]);
 
 	return (
 		<div class="shell">
@@ -1192,6 +1535,7 @@ function App() {
 				) : null}
 				{isAuthenticated ? (
 					<div class="profile-panel">
+						<button class="ghost" onClick={() => navigate('/summary')}>{t.summaryButton}</button>
 						<button class="ghost" onClick={() => navigate('/status')}>{t.statusButton}</button>
 						<button class="ghost icon-only" onClick={() => navigate('/profile')} aria-label={t.openProfile}>
 							<span class="material-symbols-rounded ui-icon" aria-hidden="true">account_circle</span>
@@ -1211,8 +1555,9 @@ function App() {
 							<option value="es">ES</option>
 							<option value="en">EN</option>
 						</select>
+						<button class="ghost" onClick={() => navigate('/summary')}>{t.summaryButton}</button>
 						<button class="ghost" onClick={() => navigate('/status')}>{t.statusButton}</button>
-						<button class="ghost" onClick={() => navigate('/auth')}>{t.loginRegister}</button>
+						<button class="ghost" onClick={openRegister}>{t.tryMeRegister}</button>
 					</nav>
 				)}
 			</header>
@@ -1223,6 +1568,16 @@ function App() {
 						<p class="kicker">{t.landingKicker}</p>
 						<h1>{appTitle}</h1>
 						<p>{t.landingDescription}</p>
+						<div class="trial-banner">
+							<div>
+								<strong>{t.tryMeTitle}</strong>
+								<small>{t.tryMeSubtitle}</small>
+							</div>
+							<div class="trial-actions">
+								<button class="solid" onClick={openRegister}>{t.tryMeRegister}</button>
+								<button class="ghost" onClick={openDemoLogin}>{t.tryMeDemoLogin}</button>
+							</div>
+						</div>
 						<div class="stack-grid">
 							<span>Spring Security + JWT</span>
 							<span>Flyway + PostgreSQL</span>
@@ -1231,10 +1586,24 @@ function App() {
 							<span>Docker/Compose</span>
 							<span>OpenAPI + Metrics</span>
 						</div>
-						<div class="cta-row">
-							<button class="solid" onClick={() => { setAuthMode('register'); navigate('/auth'); }}>{t.createAccount}</button>
-							<button class="ghost" onClick={() => { setAuthMode('login'); navigate('/auth'); }}>{t.signIn}</button>
-						</div>
+						<section class="examples-panel">
+							<h3>{t.examplesTitle}</h3>
+							<p class="muted">{t.examplesSubtitle}</p>
+							<div class="examples-grid">
+								<article class="example-card">
+									<h4>{t.exampleLazyTitle}</h4>
+									<pre><code>{beanExamples.lazy}</code></pre>
+								</article>
+								<article class="example-card">
+									<h4>{t.exampleStatelessTitle}</h4>
+									<pre><code>{beanExamples.stateless}</code></pre>
+								</article>
+								<article class="example-card">
+									<h4>{t.examplePrototypeTitle}</h4>
+									<pre><code>{beanExamples.prototype}</code></pre>
+								</article>
+							</div>
+						</section>
 					</section>
 				)}
 
@@ -1276,23 +1645,171 @@ function App() {
 					</section>
 				)}
 
+				{route === '/summary' && (
+					<section class="panel summary-panel">
+						<h2>{t.summaryTitle}</h2>
+						<p class="muted">{t.summaryDescription}</p>
+						<p class="muted"><strong>Endpoint:</strong> <code>{ANALYTICS_SUMMARY_ENDPOINT}</code></p>
+
+						{summaryLoading ? (
+							<>
+								<p class="muted loading-line">
+									<span class="spinner" aria-hidden="true" /> {t.summaryLoading}
+								</p>
+								<div class="summary-skeleton-grid">
+									<div class="summary-skeleton-box" />
+									<div class="summary-skeleton-box" />
+									<div class="summary-skeleton-box" />
+								</div>
+							</>
+						) : null}
+
+						{!summaryLoading && summaryError ? (
+							<p class="error">{t.summaryError} ({summaryError})</p>
+						) : null}
+
+						{!summaryLoading && !summaryError && summaryResponse ? (
+							<>
+								<div class="summary-kpis">
+									<article class="summary-kpi">
+										<strong>{t.summaryTotalPosts}</strong>
+										<span>{summaryResponse.totalPosts}</span>
+									</article>
+									<article class="summary-kpi">
+										<strong>{t.summaryTotalUsers}</strong>
+										<span>{summaryResponse.totalUsers}</span>
+									</article>
+									<article class="summary-kpi">
+										<strong>{t.summaryGeneratedAt}</strong>
+										<span>{new Date(summaryResponse.generatedAt).toLocaleString(localeTag)}</span>
+									</article>
+								</div>
+
+								<div class="summary-grid">
+									<section class="summary-box">
+										<h3>{t.summaryTopWords}</h3>
+										{summaryResponse.topWords.length === 0 ? (
+											<p class="muted">{t.summaryNoData}</p>
+										) : (
+											<div class="word-cloud">
+												{summaryResponse.topWords.map((item) => (
+													<span
+														key={item.word}
+														class="word-chip"
+														style={{ fontSize: `${buildWordFontSize(item.count, summaryResponse.topWords[0]?.count ?? 0)}px` }}
+													>
+														{item.word} ({item.count})
+													</span>
+												))}
+											</div>
+										)}
+									</section>
+
+									<section class="summary-box">
+										<h3>{t.summaryTopPosts}</h3>
+										{summaryResponse.topPosts.length === 0 ? (
+											<p class="muted">{t.summaryNoData}</p>
+										) : (
+											<ul class="summary-list summary-posts">
+												{summaryResponse.topPosts.map((post) => (
+													<li key={post.postId}>
+														<div>
+															<strong>{post.authorDisplayName}</strong>
+															<p>{post.contentPreview}</p>
+														</div>
+														<small>
+															L {post.likes} · V {post.views} · C {post.comments}
+														</small>
+													</li>
+												))}
+											</ul>
+										)}
+									</section>
+
+									<section class="summary-box">
+										<h3>{t.summaryHourlyHeatmap}</h3>
+										{!hourlyBarData ? (
+											<p class="muted">{t.summaryNoData}</p>
+										) : (
+											<div class="chart-wrap">
+												<Bar data={hourlyBarData} options={commonChartOptions} />
+											</div>
+										)}
+									</section>
+
+									<section class="summary-box">
+										<h3>{t.summaryPostsEvolution}</h3>
+										{!dailyChartData ? (
+											<p class="muted">{t.summaryNoData}</p>
+										) : (
+											<div class="chart-wrap">
+												<Line data={dailyChartData} options={commonChartOptions} />
+											</div>
+										)}
+									</section>
+								</div>
+							</>
+						) : null}
+					</section>
+				)}
+
 				{route === '/auth' && (
 					<section class="panel auth-panel">
 						<h2>{authMode === 'register' ? t.registerTitle : t.loginTitle}</h2>
 						<p class="muted">{t.apiConnection}: <code>{API_BASE_URL}</code></p>
 						<div class="mode-row">
-							<button class={authMode === 'register' ? 'tab active' : 'tab'} onClick={() => setAuthMode('register')}>{t.registerTitle}</button>
-							<button class={authMode === 'login' ? 'tab active' : 'tab'} onClick={() => setAuthMode('login')}>{t.loginTitle}</button>
+							<button
+								class={authMode === 'register' ? 'tab active' : 'tab'}
+								onClick={() => {
+									setAuthMode('register');
+									setAuthEmail('');
+									setAuthPassword('');
+								}}
+							>
+								{t.registerTitle}
+							</button>
+							<button
+								class={authMode === 'login' ? 'tab active' : 'tab'}
+								onClick={() => {
+									setAuthMode('login');
+									if (!authEmail && !authPassword) {
+										setAuthEmail(DEMO_EMAIL);
+										setAuthPassword(DEMO_PASSWORD);
+									}
+								}}
+							>
+								{t.loginTitle}
+							</button>
 						</div>
 						<form class="auth-form" onSubmit={submitAuth}>
 							<label>
 								{t.email}
-								<input name="email" type="email" required placeholder="name@domain.com" />
+								<input
+									name="email"
+									type="email"
+									required
+									placeholder="name@domain.com"
+									value={authEmail}
+									onInput={(event) => setAuthEmail((event.currentTarget as HTMLInputElement).value)}
+								/>
 							</label>
 							<label>
 								{t.password}
-								<input name="password" type="password" required minLength={8} placeholder="Password123!" />
+								<input
+									name="password"
+									type="password"
+									required
+									minLength={8}
+									placeholder="Password123!"
+									value={authPassword}
+									onInput={(event) => setAuthPassword((event.currentTarget as HTMLInputElement).value)}
+								/>
 							</label>
+							{authMode === 'login' ? (
+								<p class="muted auth-demo-hint">
+									{t.demoEmailLabel}: <code>{DEMO_EMAIL}</code> · {t.demoPasswordLabel}: <code>{DEMO_PASSWORD}</code>
+								</p>
+							) : null}
 							<button class="solid with-loader" disabled={loadingAuth} type="submit">
 								{loadingAuth ? (
 									<>
@@ -1538,6 +2055,11 @@ function App() {
 				{info ? <p class="info">{info}</p> : null}
 				{error ? <p class="error">{error}</p> : null}
 			</main>
+			{showScrollTop ? (
+				<button class="scroll-top-btn" onClick={scrollToTop} aria-label="Volver arriba">
+					<span class="material-symbols-rounded" aria-hidden="true">keyboard_arrow_up</span>
+				</button>
+			) : null}
 		</div>
 	);
 }

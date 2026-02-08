@@ -33,10 +33,18 @@ npm run preview
 - Landing (`/`) con intro del proyecto y stack usado.
 - Registro/Login (`/auth`) contra `/api/v1/auth/register|login`.
 - Status (`/status`) consultando `GET /actuator/health/readiness`.
+- Summary (`/summary`) publico consultando `GET /api/v1/analytics/summary` (`@Lazy`).
 - Perfil y logout en cabecera (`/app`).
 - Feed de posts (`/api/v1/posts/feed`) con acciones `like`, `view`, `comment`.
 - Composer para crear post (`POST /api/v1/posts`).
 - Persistencia de sesión JWT en `localStorage`.
+
+## Visualizacion de analytics
+
+- Se usa `chart.js` + `react-chartjs-2` para:
+- Grafico de lineas: evolucion diaria de posts (30 dias).
+- Grafico de barras: actividad por hora (heatmap horario simplificado).
+- Nube de palabras/chips: top palabras con tamano proporcional a frecuencia.
 
 
 # Despliegue Cloudflare Pages (Wrangler)

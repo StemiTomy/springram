@@ -245,6 +245,12 @@ Search (requiere `Authorization: Bearer <token>`):
 - `GET /api/v1/search/suggestions?q=spring&type=posts|users&limit=10` (autocompletado, por defecto `posts`)
 - `GET /api/v1/search/results?q=spring&type=posts|users&page=0&size=20` (resultados paginados con `likes/comments/views`)
 
+Analytics (publico):
+
+- `GET /api/v1/analytics/summary` (motor pesado `HeavyAnalyticsEngine` con `@Lazy`)
+- Incluye: `topWords`, `topPosts`, `hourlyHeatmap` y `postsEvolution` (30 dias).
+Nota: este endpoint esta publico para la vista frontend de resumen.
+
 Payloads de ejemplo:
 
 ```json
