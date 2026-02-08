@@ -8,6 +8,7 @@ import com.stelut.demostracion.social.dto.CreateCommentRequest;
 import com.stelut.demostracion.social.dto.CreatePostRequest;
 import com.stelut.demostracion.social.dto.FeedResponse;
 import com.stelut.demostracion.social.dto.PostCommentResponse;
+import com.stelut.demostracion.social.dto.PostCommentsPageResponse;
 import com.stelut.demostracion.social.dto.PostResponse;
 import com.stelut.demostracion.social.dto.PostStatsResponse;
 
@@ -86,28 +87,47 @@ public class PostController {
 		return new PostCommentResponse(
 				comment.id(),
 				postId,
-				userId,
+				comment.userId(),
+				comment.userDisplayName(),
 				comment.content(),
 				comment.createdAt(),
 				comment.updatedAt()
 		);
 	}
 
+	@GetMapping("/{postId}")
+	public PostResponse postDetail(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID postId) {
+		UUID userId = requireUserId(jwt);
+		Post post = socialPostService.getPost(postId);
+		boolean likedByMe = socialPostService.findLikedPostIds(userId, Set.of(postId)).contains(postId);
+		return toPostResponse(post, likedByMe);
+	}
+
 	@GetMapping("/{postId}/comments")
-	public List<PostCommentResponse> listComments(
+	public PostCommentsPageResponse listComments(
 			@PathVariable UUID postId,
+			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "50") @Min(1) @Max(200) int size
 	) {
-		return socialPostService.listComments(postId, size).stream()
+		Page<SocialPostService.CommentSnapshot> commentsPage = socialPostService.listComments(postId, page, size);
+		List<PostCommentResponse> items = commentsPage.getContent().stream()
 				.map(comment -> new PostCommentResponse(
 						comment.id(),
 						comment.postId(),
 						comment.userId(),
+						comment.userDisplayName(),
 						comment.content(),
 						comment.createdAt(),
 						comment.updatedAt()
 				))
 				.toList();
+		return new PostCommentsPageResponse(
+				items,
+				commentsPage.getNumber(),
+				commentsPage.getSize(),
+				commentsPage.getTotalElements(),
+				commentsPage.getTotalPages()
+		);
 	}
 
 	@GetMapping("/feed")
@@ -149,6 +169,7 @@ public class PostController {
 		SocialPostService.PostCounters counters = socialPostService.getPostCounters(post.getId());
 		return new PostResponse(
 				post.getId(),
+				post.getAuthor().getId(),
 				post.getAuthorDisplayName(),
 				post.getContent(),
 				post.getCreatedAt(),

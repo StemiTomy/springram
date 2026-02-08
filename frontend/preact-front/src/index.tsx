@@ -26,7 +26,7 @@ ChartJS.register(
 	Filler,
 );
 
-type RoutePath = '/' | '/auth' | '/app' | '/search' | '/status' | '/profile' | '/summary';
+type RoutePath = '/' | '/auth' | '/app' | '/search' | '/status' | '/profile' | '/summary' | '/post' | '/user';
 type Language = 'es' | 'en';
 
 type AuthResponse = {
@@ -50,6 +50,7 @@ type LanguagePreferenceResponse = {
 
 type PostResponse = {
 	id: string;
+	authorId: string;
 	authorDisplayName: string;
 	content: string;
 	createdAt: string;
@@ -75,6 +76,24 @@ type PostStatsResponse = {
 	comments: number;
 };
 
+type PostCommentResponse = {
+	id: string;
+	postId: string;
+	userId: string;
+	userDisplayName: string;
+	content: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+type PostCommentsPageResponse = {
+	items: PostCommentResponse[];
+	page: number;
+	size: number;
+	totalElements: number;
+	totalPages: number;
+};
+
 type SearchType = 'posts' | 'users';
 
 type SearchSuggestionItem = {
@@ -95,6 +114,7 @@ type SearchResultItem = {
 	kind: 'post' | 'user';
 	primaryText: string;
 	secondaryText: string;
+	userId: string;
 	createdAt: string;
 	posts: number;
 	likes: number;
@@ -111,6 +131,19 @@ type SearchResultsPageResponse = {
 	size: number;
 	totalElements: number;
 	totalPages: number;
+};
+
+type UserPublicProfileResponse = {
+	id: string;
+	email: string;
+	role: string;
+	preferredLanguage: string;
+	createdAt: string;
+	posts: number;
+	likes: number;
+	comments: number;
+	views: number;
+	recentPosts: PostResponse[];
 };
 
 type ReadinessResponse = {
@@ -235,6 +268,19 @@ type Messages = {
 	statsLikes: string;
 	statsComments: string;
 	statsViews: string;
+	postDetailTitle: string;
+	postCommentsTitle: string;
+	loadingPostDetail: string;
+	postDetailFailed: string;
+	commentsFailed: string;
+	loadMoreComments: string;
+	loadingCommentsMore: string;
+	userPublicTitle: string;
+	userPublicSubtitle: string;
+	loadingUserProfile: string;
+	userProfileFailed: string;
+	memberSince: string;
+	recentPostsTitle: string;
 	summaryButton: string;
 	summaryTitle: string;
 	summaryDescription: string;
@@ -345,6 +391,19 @@ const I18N: Record<Language, Messages> = {
 		statsLikes: 'Likes',
 		statsComments: 'Comentarios',
 		statsViews: 'Vistas',
+		postDetailTitle: 'Detalle del post',
+		postCommentsTitle: 'Comentarios',
+		loadingPostDetail: 'Cargando detalle...',
+		postDetailFailed: 'No se pudo cargar el detalle del post.',
+		commentsFailed: 'No se pudieron cargar los comentarios.',
+		loadMoreComments: 'Mas comentarios',
+		loadingCommentsMore: 'Cargando comentarios...',
+		userPublicTitle: 'Perfil publico',
+		userPublicSubtitle: 'Resumen del usuario y sus posts recientes.',
+		loadingUserProfile: 'Cargando perfil de usuario...',
+		userProfileFailed: 'No se pudo cargar el perfil publico.',
+		memberSince: 'Miembro desde',
+		recentPostsTitle: 'Posts recientes',
 		summaryButton: 'Estadistica de la red social (lazy)',
 		summaryTitle: 'Estadistica de la red social (lazy)',
 		summaryDescription: 'Resumen global calculado bajo demanda desde el endpoint lazy.',
@@ -453,6 +512,19 @@ const I18N: Record<Language, Messages> = {
 		statsLikes: 'Likes',
 		statsComments: 'Comments',
 		statsViews: 'Views',
+		postDetailTitle: 'Post detail',
+		postCommentsTitle: 'Comments',
+		loadingPostDetail: 'Loading post detail...',
+		postDetailFailed: 'Could not load post detail.',
+		commentsFailed: 'Could not load comments.',
+		loadMoreComments: 'More comments',
+		loadingCommentsMore: 'Loading comments...',
+		userPublicTitle: 'Public profile',
+		userPublicSubtitle: 'User summary and recent posts.',
+		loadingUserProfile: 'Loading user profile...',
+		userProfileFailed: 'Could not load public profile.',
+		memberSince: 'Member since',
+		recentPostsTitle: 'Recent posts',
 		summaryButton: 'Social network stats (lazy)',
 		summaryTitle: 'Social network stats (lazy)',
 		summaryDescription: 'Global summary computed on demand from the lazy endpoint.',
@@ -556,12 +628,36 @@ function normalizePath(pathname: string): RoutePath {
 	if (pathname === '/summary') {
 		return '/summary';
 	}
+	if (pathname === '/post') {
+		return '/post';
+	}
+	if (pathname === '/user') {
+		return '/user';
+	}
 	return '/';
 }
 
 function navigate(path: RoutePath): void {
 	window.history.pushState({}, '', path);
 	window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+function navigateWithQuery(path: '/post' | '/user', key: 'id', value: string): void {
+	const query = `${key}=${encodeURIComponent(value)}`;
+	window.history.pushState({}, '', `${path}?${query}`);
+	window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+function readRouteEntityId(path: '/post' | '/user'): string | null {
+	if (window.location.pathname !== path) {
+		return null;
+	}
+	const raw = new URLSearchParams(window.location.search).get('id');
+	if (!raw) {
+		return null;
+	}
+	const value = raw.trim();
+	return value ? value : null;
 }
 
 function readSession(): Session | null {
@@ -698,6 +794,23 @@ function App() {
 	const [activeSearch, setActiveSearch] = useState<{ query: string; type: SearchType }>({ query: '', type: 'posts' });
 	const [searchResultsLoading, setSearchResultsLoading] = useState(false);
 	const [searchResultsLoadingMore, setSearchResultsLoadingMore] = useState(false);
+	const [activePostId, setActivePostId] = useState<string | null>(readRouteEntityId('/post'));
+	const [activeUserId, setActiveUserId] = useState<string | null>(readRouteEntityId('/user'));
+	const [postDetail, setPostDetail] = useState<PostResponse | null>(null);
+	const [postDetailLoading, setPostDetailLoading] = useState(false);
+	const [postDetailError, setPostDetailError] = useState<string | null>(null);
+	const [postComments, setPostComments] = useState<PostCommentResponse[]>([]);
+	const [postCommentsMeta, setPostCommentsMeta] = useState<{ page: number; totalPages: number; totalElements: number }>({
+		page: 0,
+		totalPages: 0,
+		totalElements: 0,
+	});
+	const [postCommentsLoading, setPostCommentsLoading] = useState(false);
+	const [postCommentsLoadingMore, setPostCommentsLoadingMore] = useState(false);
+	const [postCommentsError, setPostCommentsError] = useState<string | null>(null);
+	const [publicUserProfile, setPublicUserProfile] = useState<UserPublicProfileResponse | null>(null);
+	const [publicUserProfileLoading, setPublicUserProfileLoading] = useState(false);
+	const [publicUserProfileError, setPublicUserProfileError] = useState<string | null>(null);
 	const [showScrollTop, setShowScrollTop] = useState(false);
 	const searchBoxRef = useRef<HTMLDivElement | null>(null);
 	const viewedPostIdsRef = useRef<Set<string>>(new Set());
@@ -720,7 +833,11 @@ function App() {
 	};
 
 	useEffect(() => {
-		const onPopState = () => setRoute(normalizePath(window.location.pathname));
+		const onPopState = () => {
+			setRoute(normalizePath(window.location.pathname));
+			setActivePostId(readRouteEntityId('/post'));
+			setActiveUserId(readRouteEntityId('/user'));
+		};
 		window.addEventListener('popstate', onPopState);
 		return () => window.removeEventListener('popstate', onPopState);
 	}, []);
@@ -748,7 +865,7 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if ((route === '/app' || route === '/search' || route === '/profile') && !isAuthenticated) {
+		if ((route === '/app' || route === '/search' || route === '/profile' || route === '/post' || route === '/user') && !isAuthenticated) {
 			navigate('/auth');
 		}
 	}, [route, isAuthenticated]);
@@ -881,6 +998,64 @@ function App() {
 		});
 	};
 
+	const loadPostDetail = async (postId: string) => {
+		if (!session) {
+			return;
+		}
+		const response = await apiFetch(`/api/v1/posts/${postId}`, { method: 'GET' }, session, setSession);
+		if (!response.ok) {
+			throw new Error(t.postDetailFailed);
+		}
+		const payload = (await response.json()) as PostResponse;
+		setPostDetail(payload);
+	};
+
+	const loadPostCommentsPage = async (postId: string, page: number, append: boolean) => {
+		if (!session) {
+			return;
+		}
+		const response = await apiFetch(
+			`/api/v1/posts/${postId}/comments?page=${page}&size=20`,
+			{ method: 'GET' },
+			session,
+			setSession,
+		);
+		if (!response.ok) {
+			throw new Error(t.commentsFailed);
+		}
+		const payload = (await response.json()) as PostCommentsPageResponse;
+		setPostComments((prev) => {
+			if (!append) {
+				return payload.items;
+			}
+			const existingIds = new Set(prev.map((item) => item.id));
+			const merged = [...prev];
+			for (const item of payload.items) {
+				if (!existingIds.has(item.id)) {
+					merged.push(item);
+				}
+			}
+			return merged;
+		});
+		setPostCommentsMeta({
+			page: payload.page,
+			totalPages: payload.totalPages,
+			totalElements: payload.totalElements,
+		});
+	};
+
+	const loadPublicUserProfile = async (userId: string) => {
+		if (!session) {
+			return;
+		}
+		const response = await apiFetch(`/api/v1/users/${userId}?recentPostsLimit=20`, { method: 'GET' }, session, setSession);
+		if (!response.ok) {
+			throw new Error(t.userProfileFailed);
+		}
+		const payload = (await response.json()) as UserPublicProfileResponse;
+		setPublicUserProfile(payload);
+	};
+
 	const openSearchResults = () => {
 		const query = searchQuery.trim();
 		if (!query) {
@@ -906,6 +1081,24 @@ function App() {
 			setError(err instanceof Error ? err.message : t.searchFailed);
 		} finally {
 			setSearchResultsLoadingMore(false);
+		}
+	};
+
+	const loadMorePostComments = async () => {
+		if (!session || !activePostId || postCommentsLoadingMore) {
+			return;
+		}
+		if (postCommentsMeta.totalPages === 0 || postCommentsMeta.page + 1 >= postCommentsMeta.totalPages) {
+			return;
+		}
+		setPostCommentsLoadingMore(true);
+		setPostCommentsError(null);
+		try {
+			await loadPostCommentsPage(activePostId, postCommentsMeta.page + 1, true);
+		} catch (err) {
+			setPostCommentsError(err instanceof Error ? err.message : t.commentsFailed);
+		} finally {
+			setPostCommentsLoadingMore(false);
 		}
 	};
 
@@ -1054,7 +1247,7 @@ function App() {
 	}, [route, session?.accessToken]);
 
 	useEffect(() => {
-		if ((route === '/search' || route === '/profile') && session && !profile) {
+		if ((route === '/search' || route === '/profile' || route === '/post' || route === '/user') && session && !profile) {
 			void loadProfile().catch(() => {
 				// handled by auth/session flow if token is invalid
 			});
@@ -1073,6 +1266,53 @@ function App() {
 			})
 			.finally(() => setSearchResultsLoading(false));
 	}, [route, session?.accessToken, activeSearch.query, activeSearch.type]);
+
+	useEffect(() => {
+		if (route !== '/post' || !session) {
+			return;
+		}
+		if (!activePostId) {
+			navigate('/app');
+			return;
+		}
+
+		setPostDetailLoading(true);
+		setPostDetailError(null);
+		setPostCommentsLoading(true);
+		setPostCommentsError(null);
+
+		void Promise.all([
+			loadPostDetail(activePostId),
+			loadPostCommentsPage(activePostId, 0, false),
+			registerPostView(activePostId, true),
+		])
+			.catch((err) => {
+				const message = err instanceof Error ? err.message : t.postDetailFailed;
+				setPostDetailError(message);
+				setPostCommentsError(message);
+			})
+			.finally(() => {
+				setPostDetailLoading(false);
+				setPostCommentsLoading(false);
+			});
+	}, [route, session?.accessToken, activePostId]);
+
+	useEffect(() => {
+		if (route !== '/user' || !session) {
+			return;
+		}
+		if (!activeUserId) {
+			navigate('/app');
+			return;
+		}
+		setPublicUserProfileLoading(true);
+		setPublicUserProfileError(null);
+		void loadPublicUserProfile(activeUserId)
+			.catch((err) => {
+				setPublicUserProfileError(err instanceof Error ? err.message : t.userProfileFailed);
+			})
+			.finally(() => setPublicUserProfileLoading(false));
+	}, [route, session?.accessToken, activeUserId]);
 
 	useEffect(() => {
 		if (route !== '/status') {
@@ -1141,6 +1381,11 @@ function App() {
 					: item,
 			),
 		);
+		setPostDetail((prev) =>
+			prev && prev.id === stats.postId
+				? { ...prev, likes: stats.likes, views: stats.views, comments: stats.comments }
+				: prev,
+		);
 	};
 
 	const updateSearchResultStats = (stats: PostStatsResponse) => {
@@ -1202,6 +1447,11 @@ function App() {
 					: item,
 			),
 		);
+		setPostDetail((prev) =>
+			prev && prev.id === postId
+				? { ...prev, likedByMe: !likedByMe }
+				: prev,
+		);
 	};
 
 	const submitComment = async (event: Event, postId: string) => {
@@ -1224,10 +1474,27 @@ function App() {
 			setError(t.commentFailed);
 			return;
 		}
+		const createdComment = (await response.json()) as PostCommentResponse;
 		setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
 		setFeed((prev) =>
 			prev.map((item) => (item.id === postId ? { ...item, comments: item.comments + 1 } : item)),
 		);
+		setSearchResults((prev) =>
+			prev.map((item) =>
+				item.id === postId && item.kind === 'post'
+					? { ...item, comments: item.comments + 1 }
+					: item,
+			),
+		);
+		setPostDetail((prev) => (prev && prev.id === postId ? { ...prev, comments: prev.comments + 1 } : prev));
+		setPostComments((prev) => {
+			if (!prev.length) {
+				return [createdComment];
+			}
+			const exists = prev.some((item) => item.id === createdComment.id);
+			return exists ? prev : [...prev, createdComment];
+		});
+		setPostCommentsMeta((prev) => ({ ...prev, totalElements: prev.totalElements + 1 }));
 		setInfo(t.commentSent);
 	};
 
@@ -1235,6 +1502,11 @@ function App() {
 		setSession(null);
 		setInfo(null);
 		setError(null);
+		setPostDetail(null);
+		setPostComments([]);
+		setPublicUserProfile(null);
+		setActivePostId(null);
+		setActiveUserId(null);
 		setSearchQuery('');
 		setSearchItems([]);
 		setSearchOpen(false);
@@ -1246,21 +1518,24 @@ function App() {
 		navigate('/');
 	};
 
+	const openPostDetail = (postId: string) => {
+		setActivePostId(postId);
+		navigateWithQuery('/post', 'id', postId);
+	};
+
+	const openUserProfile = (userId: string) => {
+		setActiveUserId(userId);
+		navigateWithQuery('/user', 'id', userId);
+	};
+
 	const onSelectSuggestion = (item: SearchSuggestionItem) => {
 		setSearchQuery(item.title);
 		setSearchOpen(false);
 		if (item.kind === 'post') {
-			const element = document.getElementById(`post-${item.id}`);
-			if (element) {
-				element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			} else {
-				setActiveSearch({ query: searchQuery.trim() || item.title, type: 'posts' });
-				navigate('/search');
-			}
+			openPostDetail(item.id);
 			return;
 		}
-		setActiveSearch({ query: searchQuery.trim() || item.title, type: 'users' });
-		navigate('/search');
+		openUserProfile(item.id);
 	};
 
 	const appTitle = useMemo(() => 'Springram by Stelut Tomoiaga', []);
@@ -1858,6 +2133,189 @@ state.apply(requestedLanguage);`,
 					</section>
 				)}
 
+				{route === '/post' && (
+					<section class="panel app-panel">
+						<div class="search-results-head">
+							<h2>{t.postDetailTitle}</h2>
+							<button class="ghost" onClick={() => navigate('/app')}>{t.backToFeed}</button>
+						</div>
+
+						{postDetailLoading ? (
+							<p class="muted loading-line">
+								<span class="spinner" aria-hidden="true" /> {t.loadingPostDetail}
+							</p>
+						) : null}
+
+						{!postDetailLoading && postDetailError ? (
+							<p class="error-inline">{postDetailError}</p>
+						) : null}
+
+						{!postDetailLoading && !postDetailError && postDetail ? (
+							<div class="feed-list">
+								<article class="post" key={`detail-${postDetail.id}`}>
+									<div class="post-layout">
+										<div class="avatar">{toAvatarInitial(postDetail.authorDisplayName)}</div>
+										<div class="post-main">
+											<div class="post-head">
+												<button class="text-link" onClick={() => openUserProfile(postDetail.authorId)}>
+													<strong>{postDetail.authorDisplayName}</strong>
+												</button>
+												<span class="handle">@{toHandle(postDetail.authorDisplayName)}</span>
+												<span class="separator">·</span>
+												<time>{toRelativeTime(postDetail.createdAt)}</time>
+											</div>
+											<p class="post-text">{postDetail.content}</p>
+											<div class="post-actions">
+												<div class="action-item neutral">
+													<span class="material-symbols-rounded action-icon" aria-hidden="true">comment</span>
+													<span>{postDetail.comments}</span>
+												</div>
+												<button
+													class={postDetail.likedByMe ? 'action-item liked' : 'action-item neutral'}
+													onClick={() => void toggleLike(postDetail.id, postDetail.likedByMe)}
+													aria-label={postDetail.likedByMe ? t.unlike : t.like}
+												>
+													<span class={postDetail.likedByMe ? 'material-symbols-rounded action-icon filled-icon' : 'material-symbols-rounded action-icon'} aria-hidden="true">favorite</span>
+													<span>{postDetail.likes}</span>
+												</button>
+												<div class="action-item neutral" aria-label={t.view}>
+													<span class="material-symbols-rounded action-icon" aria-hidden="true">visibility</span>
+													<span>{postDetail.views}</span>
+												</div>
+											</div>
+										</div>
+									</div>
+									<form class="comment-form" onSubmit={(event) => void submitComment(event, postDetail.id)}>
+										<input
+											placeholder={t.commentPlaceholder}
+											maxLength={2000}
+											value={commentDrafts[postDetail.id] || ''}
+											onInput={(event) => {
+												const value = (event.currentTarget as HTMLInputElement).value;
+												setCommentDrafts((prev) => ({ ...prev, [postDetail.id]: value }));
+											}}
+										/>
+										<button class="solid" type="submit">{t.send}</button>
+									</form>
+								</article>
+							</div>
+						) : null}
+
+						<div class="post-comments-wrap">
+							<h3>{t.postCommentsTitle}</h3>
+							{postCommentsLoading ? (
+								<p class="muted loading-line">
+									<span class="spinner" aria-hidden="true" /> {t.loadingCommentsMore}
+								</p>
+							) : null}
+							{!postCommentsLoading && postCommentsError ? <p class="error-inline">{postCommentsError}</p> : null}
+							{!postCommentsLoading && !postCommentsError ? (
+								<ul class="comments-list">
+									{postComments.map((comment) => (
+										<li key={comment.id} class="comment-item">
+											<button class="text-link" onClick={() => openUserProfile(comment.userId)}>
+												<strong>{comment.userDisplayName}</strong>
+											</button>
+											<span class="comment-time">{toRelativeTime(comment.createdAt)}</span>
+											<p>{comment.content}</p>
+										</li>
+									))}
+								</ul>
+							) : null}
+							{postCommentsMeta.page + 1 < postCommentsMeta.totalPages ? (
+								<div class="load-more-wrap">
+									<button class="ghost with-loader" onClick={() => void loadMorePostComments()} disabled={postCommentsLoadingMore}>
+										{postCommentsLoadingMore ? (
+											<>
+												<span class="spinner" aria-hidden="true" />
+												{t.loadingCommentsMore}
+											</>
+										) : t.loadMoreComments}
+									</button>
+								</div>
+							) : null}
+						</div>
+					</section>
+				)}
+
+				{route === '/user' && (
+					<section class="panel app-panel">
+						<div class="search-results-head">
+							<h2>{t.userPublicTitle}</h2>
+							<button class="ghost" onClick={() => navigate('/app')}>{t.backToFeed}</button>
+						</div>
+						{publicUserProfileLoading ? (
+							<p class="muted loading-line">
+								<span class="spinner" aria-hidden="true" /> {t.loadingUserProfile}
+							</p>
+						) : null}
+						{!publicUserProfileLoading && publicUserProfileError ? (
+							<p class="error-inline">{publicUserProfileError}</p>
+						) : null}
+						{!publicUserProfileLoading && !publicUserProfileError && publicUserProfile ? (
+							<>
+								<div class="public-user-head">
+									<div class="avatar">{toAvatarInitial(publicUserProfile.email)}</div>
+									<div>
+										<h3>{publicUserProfile.email}</h3>
+										<p class="muted">{t.userPublicSubtitle}</p>
+										<p class="muted">{t.memberSince}: {new Date(publicUserProfile.createdAt).toLocaleDateString(localeTag)}</p>
+									</div>
+								</div>
+								<div class="stats-row user-stats-row public-user-stats">
+									<span>{t.statsPosts}: {publicUserProfile.posts}</span>
+									<span>{t.statsLikes}: {publicUserProfile.likes}</span>
+									<span>{t.statsComments}: {publicUserProfile.comments}</span>
+									<span>{t.statsViews}: {publicUserProfile.views}</span>
+								</div>
+								<div class="search-results-head section-head-inline">
+									<h3>{t.recentPostsTitle}</h3>
+								</div>
+								<div class="feed-list">
+									{publicUserProfile.recentPosts.map((post) => (
+										<article class="post" key={`user-post-${post.id}`}>
+											<div class="post-layout">
+												<div class="avatar">{toAvatarInitial(post.authorDisplayName)}</div>
+												<div class="post-main">
+													<div class="post-head">
+														<button class="text-link" onClick={() => openUserProfile(post.authorId)}>
+															<strong>{post.authorDisplayName}</strong>
+														</button>
+														<span class="handle">@{toHandle(post.authorDisplayName)}</span>
+														<span class="separator">·</span>
+														<time>{toRelativeTime(post.createdAt)}</time>
+													</div>
+													<button class="post-text-button" onClick={() => openPostDetail(post.id)}>
+														<p class="post-text">{post.content}</p>
+													</button>
+													<div class="post-actions">
+														<button class="action-item neutral" onClick={() => openPostDetail(post.id)}>
+															<span class="material-symbols-rounded action-icon" aria-hidden="true">comment</span>
+															<span>{post.comments}</span>
+														</button>
+														<button
+															class={post.likedByMe ? 'action-item liked' : 'action-item neutral'}
+															onClick={() => void toggleLike(post.id, post.likedByMe)}
+															aria-label={post.likedByMe ? t.unlike : t.like}
+														>
+															<span class={post.likedByMe ? 'material-symbols-rounded action-icon filled-icon' : 'material-symbols-rounded action-icon'} aria-hidden="true">favorite</span>
+															<span>{post.likes}</span>
+														</button>
+														<div class="action-item neutral">
+															<span class="material-symbols-rounded action-icon" aria-hidden="true">visibility</span>
+															<span>{post.views}</span>
+														</div>
+													</div>
+												</div>
+											</div>
+										</article>
+									))}
+								</div>
+							</>
+						) : null}
+					</section>
+				)}
+
 				{route === '/search' && (
 					<section class="panel app-panel">
 						<div class="search-results-head">
@@ -1886,17 +2344,21 @@ state.apply(requestedLanguage);`,
 											<div class="avatar">{toAvatarInitial(item.secondaryText)}</div>
 											<div class="post-main">
 												<div class="post-head">
-													<strong>{item.secondaryText}</strong>
+													<button class="text-link" onClick={() => openUserProfile(item.userId)}>
+														<strong>{item.secondaryText}</strong>
+													</button>
 													<span class="handle">@{toHandle(item.secondaryText)}</span>
 													<span class="separator">·</span>
 													<time>{toRelativeTime(item.createdAt)}</time>
 												</div>
-												<p class="post-text">{item.primaryText}</p>
+												<button class="post-text-button" onClick={() => openPostDetail(item.id)}>
+													<p class="post-text">{item.primaryText}</p>
+												</button>
 												<div class="post-actions">
-													<div class="action-item neutral">
+													<button class="action-item neutral" onClick={() => openPostDetail(item.id)}>
 														<span class="material-symbols-rounded action-icon" aria-hidden="true">comment</span>
 														<span>{item.comments}</span>
-													</div>
+													</button>
 													<button
 														class={item.likedByMe ? 'action-item liked' : 'action-item neutral'}
 														onClick={() => void toggleLike(item.id, item.likedByMe)}
@@ -1923,7 +2385,9 @@ state.apply(requestedLanguage);`,
 											<div class="avatar">{toAvatarInitial(item.primaryText)}</div>
 											<div class="post-main">
 												<div class="post-head">
-													<strong>{item.primaryText}</strong>
+													<button class="text-link" onClick={() => openUserProfile(item.userId)}>
+														<strong>{item.primaryText}</strong>
+													</button>
 													<span class="handle">{item.secondaryText}</span>
 													<span class="separator">·</span>
 													<time>{toRelativeTime(item.createdAt)}</time>
@@ -1995,17 +2459,21 @@ state.apply(requestedLanguage);`,
 										<div class="avatar">{toAvatarInitial(post.authorDisplayName)}</div>
 										<div class="post-main">
 											<div class="post-head">
-												<strong>{post.authorDisplayName}</strong>
+												<button class="text-link" onClick={() => openUserProfile(post.authorId)}>
+													<strong>{post.authorDisplayName}</strong>
+												</button>
 												<span class="handle">@{toHandle(post.authorDisplayName)}</span>
 												<span class="separator">·</span>
 												<time>{toRelativeTime(post.createdAt)}</time>
 											</div>
-											<p class="post-text">{post.content}</p>
+											<button class="post-text-button" onClick={() => openPostDetail(post.id)}>
+												<p class="post-text">{post.content}</p>
+											</button>
 											<div class="post-actions">
-												<div class="action-item neutral" aria-label={t.comment}>
+												<button class="action-item neutral" aria-label={t.comment} onClick={() => openPostDetail(post.id)}>
 													<span class="material-symbols-rounded action-icon" aria-hidden="true">comment</span>
 													<span>{post.comments}</span>
-												</div>
+												</button>
 												<button
 													class={post.likedByMe ? 'action-item liked' : 'action-item neutral'}
 													onClick={() => void toggleLike(post.id, post.likedByMe)}

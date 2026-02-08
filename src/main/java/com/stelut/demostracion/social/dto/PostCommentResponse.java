@@ -7,6 +7,7 @@ public record PostCommentResponse(
 		UUID id,
 		UUID postId,
 		UUID userId,
+		String userDisplayName,
 		String content,
 		Instant createdAt,
 		Instant updatedAt

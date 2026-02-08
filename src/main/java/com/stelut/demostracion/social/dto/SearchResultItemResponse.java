@@ -7,6 +7,7 @@ public record SearchResultItemResponse(
 		String kind,
 		String primaryText,
 		String secondaryText,
+		String userId,
 		Instant createdAt,
 		long posts,
 		long likes,

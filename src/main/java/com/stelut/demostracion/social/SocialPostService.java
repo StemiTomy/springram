@@ -32,6 +32,7 @@ public class SocialPostService {
 			UUID id,
 			UUID postId,
 			UUID userId,
+			String userDisplayName,
 			String content,
 			Instant createdAt,
 			Instant updatedAt
@@ -152,6 +153,9 @@ public class SocialPostService {
 
 	public CommentSnapshot addComment(UUID postId, UUID userId, String content) {
 		ensurePostKnown(postId);
+		String userDisplayName = userRepository.findById(userId)
+				.map(User::getEmail)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "user not found"));
 
 		Instant now = Instant.now();
 		UUID commentId = UUID.randomUUID();
@@ -159,7 +163,7 @@ public class SocialPostService {
 		if (!socialAsyncProperties.asyncEnabled()) {
 			persistComment(postId, userId, commentId, content, now, true);
 			metrics.dbFallback("comment");
-			return new CommentSnapshot(commentId, postId, userId, content, now, now);
+			return new CommentSnapshot(commentId, postId, userId, userDisplayName, content, now, now);
 		}
 
 		socialStatsCacheService.registerComment(postId);
@@ -170,7 +174,13 @@ public class SocialPostService {
 			metrics.dbFallback("comment");
 		}
 
-		return new CommentSnapshot(commentId, postId, userId, content, now, now);
+		return new CommentSnapshot(commentId, postId, userId, userDisplayName, content, now, now);
+	}
+
+	@Transactional(readOnly = true)
+	public Post getPost(UUID postId) {
+		return postRepository.findById(postId)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "post not found"));
 	}
 
 	@Transactional(readOnly = true)
@@ -180,21 +190,33 @@ public class SocialPostService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<CommentSnapshot> listComments(UUID postId, int size) {
+	public List<Post> findRecentPostsByAuthor(UUID authorId, int limit) {
+		if (limit <= 0) {
+			return List.of();
+		}
+		return postRepository.findByAuthorIdOrderByCreatedAtDesc(authorId)
+				.stream()
+				.limit(limit)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public Page<CommentSnapshot> listComments(UUID postId, int page, int size) {
 		if (!postRepository.existsById(postId)) {
 			throw new ResponseStatusException(NOT_FOUND, "post not found");
 		}
 		return postCommentRepository.findByPostIdOrderByCreatedAtAsc(
 				postId,
-				PageRequest.of(0, size)
-		).getContent().stream().map(comment -> new CommentSnapshot(
-				comment.getId(),
-				comment.getPost().getId(),
-				comment.getUser().getId(),
-				comment.getContent(),
-				comment.getCreatedAt(),
-				comment.getUpdatedAt()
-		)).toList();
+				PageRequest.of(page, size)
+		).map(comment -> new CommentSnapshot(
+			comment.getId(),
+			comment.getPost().getId(),
+			comment.getUser().getId(),
+			comment.getUser().getEmail(),
+			comment.getContent(),
+			comment.getCreatedAt(),
+			comment.getUpdatedAt()
+		));
 	}
 
 	@Transactional(readOnly = true)
