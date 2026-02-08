@@ -1,0 +1,68 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - kafka
+    logging:
+      options:
+        max-size: '10m'
+        max-file: '3'
+    ports:
+      - '8080:8080'
+    volumes:
+      - './logs:/app/logs'
+    environment:
+      - 'SPRING_DATASOURCE_URL=${DATABASE_URL}'
+      - 'SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}'
+      - 'SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}'
+      - 'JWT_SECRET=${JWT_SECRET}'
+      - 'REDIS_HOST=${REDIS_HOST:-redis}'
+      - 'REDIS_PORT=${REDIS_PORT:-6379}'
+      - 'KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}'
+      - 'APP_SOCIAL_ASYNC_ENABLED=${APP_SOCIAL_ASYNC_ENABLED:-true}'
+      - 'APP_SOCIAL_REDIS_ENABLED=${APP_SOCIAL_REDIS_ENABLED:-true}'
+      - 'APP_SOCIAL_KAFKA_TOPIC=${APP_SOCIAL_KAFKA_TOPIC:-social-events}'
+      - 'APP_SOCIAL_REDIS_STATS_TTL=${APP_SOCIAL_REDIS_STATS_TTL:-PT24H}'
+      - 'APP_SOCIAL_REDIS_LIKES_TTL=${APP_SOCIAL_REDIS_LIKES_TTL:-PT24H}'
+      - 'APP_SOCIAL_REDIS_POSTS_TTL=${APP_SOCIAL_REDIS_POSTS_TTL:-PT168H}'
+
+  redis:
+    image: 'redis:7.4-alpine'
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    logging:
+      options:
+        max-size: '10m'
+        max-file: '3'
+    volumes:
+      - 'redis_data:/data'
+
+  kafka:
+    image: 'apache/kafka:3.9.0'
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: '10m'
+        max-file: '3'
+    environment:
+      - 'KAFKA_NODE_ID=1'
+      - 'KAFKA_PROCESS_ROLES=broker,controller'
+      - 'KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER'
+      - 'KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093'
+      - 'KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092'
+      - 'KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT'
+      - 'KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      - 'KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093'
+      - 'KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1'
+      - 'KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1'
+      - 'KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1'
+      - 'KAFKA_AUTO_CREATE_TOPICS_ENABLE=true'
+      - 'CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - 'kafka_data:/tmp/kraft-combined-logs'
+
+volumes:
+  redis_data:
+  kafka_data:

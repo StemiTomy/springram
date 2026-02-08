@@ -1,0 +1,72 @@
+{"properties": [
+  {
+    "name": "app.jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.secret'"
+  },
+  {
+    "name": "app.jwt.issuer",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.issuer'"
+  },
+  {
+    "name": "app.jwt.access-token-ttl",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.access-token-ttl'"
+  },
+  {
+    "name": "app.jwt.refresh-token-ttl",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.refresh-token-ttl'"
+  },
+  {
+    "name": "spring.flyway.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.flyway.enabled'"
+  },
+  {
+    "name": "spring.flyway.locations",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.flyway.locations'"
+  },
+  {
+    "name": "spring.flyway.baseline-on-migrate",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.flyway.baseline-on-migrate'"
+  },
+  {
+    "name": "app.social.async-enabled",
+    "type": "java.lang.Boolean",
+    "description": "Enable async social writes through Kafka."
+  },
+  {
+    "name": "app.social.redis-enabled",
+    "type": "java.lang.Boolean",
+    "description": "Enable Redis cache/counters for social features."
+  },
+  {
+    "name": "app.social.kafka-topic",
+    "type": "java.lang.String",
+    "description": "Kafka topic for social events."
+  },
+  {
+    "name": "app.social.kafka-send-timeout",
+    "type": "java.time.Duration",
+    "description": "Max wait time for Kafka publish acknowledgement."
+  },
+  {
+    "name": "app.social.redis-stats-ttl",
+    "type": "java.time.Duration",
+    "description": "TTL for Redis post stats hash."
+  },
+  {
+    "name": "app.social.redis-likes-ttl",
+    "type": "java.time.Duration",
+    "description": "TTL for Redis set of users who liked a post."
+  },
+  {
+    "name": "app.social.redis-posts-ttl",
+    "type": "java.time.Duration",
+    "description": "TTL for Redis set of known posts."
+  }
+]}
