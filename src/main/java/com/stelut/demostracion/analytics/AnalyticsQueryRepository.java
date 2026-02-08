@@ -47,6 +47,10 @@ public interface AnalyticsQueryRepository extends JpaRepository<Post, UUID> {
 		Number getTotal();
 	}
 
+	interface AverageProjection {
+		Number getValue();
+	}
+
 	@Query(
 			value = """
 					select lower(w.word) as word, count(*) as total
@@ -129,4 +133,27 @@ public interface AnalyticsQueryRepository extends JpaRepository<Post, UUID> {
 			nativeQuery = true
 	)
 	List<DailyProjection> findPostsPerDay(@Param("days") int days);
+
+	@Query(
+			value = """
+					select coalesce(avg(char_length(w.word)::numeric), 0) as value
+					from posts p
+					cross join lateral regexp_split_to_table(
+					    regexp_replace(coalesce(p.content, ''), '[^A-Za-z0-9]+', ' ', 'g'),
+					    '\\s+'
+					) as w(word)
+					where w.word <> ''
+					""",
+			nativeQuery = true
+	)
+	AverageProjection findAverageWordLength();
+
+	@Query(
+			value = """
+					select coalesce(avg(char_length(u.email)::numeric), 0) as value
+					from users u
+					""",
+			nativeQuery = true
+	)
+	AverageProjection findAverageUserEmailLength();
 }

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -50,6 +51,14 @@ public class HeavyAnalyticsEngine {
 	public AnalyticsSummaryResponse computeSummary() {
 		long totalPosts = postRepository.count();
 		long totalUsers = userRepository.count();
+		double averageWordLength = Optional.ofNullable(analyticsQueryRepository.findAverageWordLength())
+				.map(AnalyticsQueryRepository.AverageProjection::getValue)
+				.map(HeavyAnalyticsEngine::safeDouble)
+				.orElse(0D);
+		double averageUserEmailLength = Optional.ofNullable(analyticsQueryRepository.findAverageUserEmailLength())
+				.map(AnalyticsQueryRepository.AverageProjection::getValue)
+				.map(HeavyAnalyticsEngine::safeDouble)
+				.orElse(0D);
 
 		List<WordCountResponse> topWords = analyticsQueryRepository.findTopWords(TOP_WORDS_LIMIT).stream()
 				.map(row -> new WordCountResponse(row.getWord(), safeLong(row.getTotal())))
@@ -96,6 +105,8 @@ public class HeavyAnalyticsEngine {
 				Instant.now(),
 				totalPosts,
 				totalUsers,
+				averageWordLength,
+				averageUserEmailLength,
 				topWords,
 				topPosts,
 				hourlyHeatmap,
@@ -105,6 +116,10 @@ public class HeavyAnalyticsEngine {
 
 	private static long safeLong(Number value) {
 		return value == null ? 0L : value.longValue();
+	}
+
+	private static double safeDouble(Number value) {
+		return value == null ? 0D : value.doubleValue();
 	}
 
 	private static String toPreview(String content) {

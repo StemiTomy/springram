@@ -180,6 +180,8 @@ type AnalyticsSummaryResponse = {
 	generatedAt: string;
 	totalPosts: number;
 	totalUsers: number;
+	averageWordLength: number;
+	averageUserEmailLength: number;
 	topWords: AnalyticsWord[];
 	topPosts: AnalyticsTopPost[];
 	hourlyHeatmap: AnalyticsHourly[];
@@ -289,6 +291,8 @@ type Messages = {
 	summaryGeneratedAt: string;
 	summaryTotalPosts: string;
 	summaryTotalUsers: string;
+	summaryAvgWordLength: string;
+	summaryAvgUserEmailLength: string;
 	summaryTopWords: string;
 	summaryTopPosts: string;
 	summaryHourlyHeatmap: string;
@@ -412,6 +416,8 @@ const I18N: Record<Language, Messages> = {
 		summaryGeneratedAt: 'Generado',
 		summaryTotalPosts: 'Total posts',
 		summaryTotalUsers: 'Total usuarios',
+		summaryAvgWordLength: 'Media longitud palabra',
+		summaryAvgUserEmailLength: 'Media longitud usuario',
 		summaryTopWords: 'Top palabras',
 		summaryTopPosts: 'Top posts',
 		summaryHourlyHeatmap: 'Heatmap por hora',
@@ -533,6 +539,8 @@ const I18N: Record<Language, Messages> = {
 		summaryGeneratedAt: 'Generated',
 		summaryTotalPosts: 'Total posts',
 		summaryTotalUsers: 'Total users',
+		summaryAvgWordLength: 'Avg word length',
+		summaryAvgUserEmailLength: 'Avg user length',
 		summaryTopWords: 'Top words',
 		summaryTopPosts: 'Top posts',
 		summaryHourlyHeatmap: 'Hourly heatmap',
@@ -1953,6 +1961,14 @@ state.apply(requestedLanguage);`,
 									<article class="summary-kpi">
 										<strong>{t.summaryTotalUsers}</strong>
 										<span>{summaryResponse.totalUsers}</span>
+									</article>
+									<article class="summary-kpi">
+										<strong>{t.summaryAvgWordLength}</strong>
+										<span>{summaryResponse.averageWordLength.toFixed(2)}</span>
+									</article>
+									<article class="summary-kpi">
+										<strong>{t.summaryAvgUserEmailLength}</strong>
+										<span>{summaryResponse.averageUserEmailLength.toFixed(2)}</span>
 									</article>
 									<article class="summary-kpi">
 										<strong>{t.summaryGeneratedAt}</strong>

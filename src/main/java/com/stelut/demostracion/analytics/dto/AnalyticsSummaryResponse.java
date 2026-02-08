@@ -7,6 +7,8 @@ public record AnalyticsSummaryResponse(
 		Instant generatedAt,
 		long totalPosts,
 		long totalUsers,
+		double averageWordLength,
+		double averageUserEmailLength,
 		List<WordCountResponse> topWords,
 		List<TopPostSummaryResponse> topPosts,
 		List<HourlyPostBucketResponse> hourlyHeatmap,

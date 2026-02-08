@@ -68,5 +68,10 @@
     "name": "app.social.redis-posts-ttl",
     "type": "java.time.Duration",
     "description": "TTL for Redis set of known posts."
+  },
+  {
+    "name": "app.analytics.summary-cache-ttl",
+    "type": "java.time.Duration",
+    "description": "TTL for cached analytics summary response."
   }
 ]}

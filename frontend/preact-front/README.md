@@ -89,4 +89,7 @@ Después de cambiar variables, vuelve a publicar:
 
 ```bash
 npx wrangler pages deploy dist --project-name=springram-front
+
+# deploy to prod
+npx wrangler pages deploy dist --project-name=springram-front --branch=production
 ```
