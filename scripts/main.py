@@ -18,9 +18,6 @@ class SeedConfig:
     database_url: str
     users_count: int
     posts_count: int
-    max_likes_per_post: int
-    max_comments_per_post: int
-    max_view_count_per_user_post: int
     default_password: str
 
 
@@ -39,9 +36,6 @@ def load_config() -> SeedConfig:
         database_url=database_url,
         users_count=int(os.getenv("SEED_USERS_COUNT", "20")),
         posts_count=int(os.getenv("SEED_POSTS_COUNT", "60")),
-        max_likes_per_post=int(os.getenv("SEED_MAX_LIKES_PER_POST", "10")),
-        max_comments_per_post=int(os.getenv("SEED_MAX_COMMENTS_PER_POST", "6")),
-        max_view_count_per_user_post=int(os.getenv("SEED_MAX_VIEW_COUNT_PER_USER_POST", "20")),
         default_password=os.getenv("SEED_DEFAULT_PASSWORD", "Password123!"),
     )
 
@@ -64,17 +58,6 @@ def random_post_content() -> str:
     ]
     suffix = random.randint(1000, 9999)
     return f"{random.choice(samples)} #{suffix}"
-
-
-def random_comment() -> str:
-    comments = [
-        "Gran enfoque de arquitectura.",
-        "Esto está listo para una demo seria.",
-        "Buen uso de eventos asíncronos.",
-        "Me gusta cómo quedó el feed.",
-        "Vamos con la siguiente iteración.",
-    ]
-    return random.choice(comments)
 
 
 def fmt_seconds(seconds: float) -> str:
@@ -101,24 +84,12 @@ def print_progress(label: str, current: int, total: int, started_at: float) -> N
 
 
 def print_load_estimate(cfg: SeedConfig) -> None:
-    avg_likes_per_post = min(cfg.max_likes_per_post, cfg.users_count) / 2.0
-    avg_comments_per_post = cfg.max_comments_per_post / 2.0
-    avg_views_per_post = cfg.users_count / 2.0
-
-    approx_total_statements = int(
-        cfg.users_count
-        + cfg.posts_count
-        + cfg.posts_count * avg_likes_per_post
-        + cfg.posts_count * avg_comments_per_post
-        + cfg.posts_count * avg_views_per_post
-    )
+    approx_total_statements = cfg.users_count + cfg.posts_count
 
     print("Seed plan")
     print(f"- users: {cfg.users_count}")
     print(f"- posts: {cfg.posts_count}")
-    print(f"- max likes/post: {cfg.max_likes_per_post}")
-    print(f"- max comments/post: {cfg.max_comments_per_post}")
-    print(f"- max view_count per (post,user): {cfg.max_view_count_per_user_post}")
+    print("- likes/views/comments: disabled")
     print(f"- approx SQL statements: ~{approx_total_statements:,}")
     print("- estimated duration: depends on network/DB, watch live ETA below")
 
@@ -179,95 +150,6 @@ def seed_posts(cur, user_ids: List[uuid.UUID], cfg: SeedConfig) -> List[uuid.UUI
     return post_ids
 
 
-def seed_likes(cur, user_ids: List[uuid.UUID], post_ids: List[uuid.UUID], cfg: SeedConfig) -> int:
-    inserted = 0
-    started_at = time.perf_counter()
-    total_posts = len(post_ids)
-    step = progress_step(total_posts)
-
-    for index, post_id in enumerate(post_ids, start=1):
-        sample_size = random.randint(0, min(cfg.max_likes_per_post, len(user_ids)))
-        liking_users = random.sample(user_ids, sample_size)
-
-        for user_id in liking_users:
-            like_id = uuid.uuid4()
-            cur.execute(
-                """
-                INSERT INTO post_likes (id, post_id, user_id, created_at)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (post_id, user_id) DO NOTHING;
-                """,
-                (str(like_id), str(post_id), str(user_id), now_utc()),
-            )
-            inserted += 1
-        if index % step == 0 or index == total_posts:
-            print_progress("likes/posts", index, total_posts, started_at)
-            print(f"[likes] inserted so far: {inserted:,}")
-    return inserted
-
-
-def seed_views(cur, user_ids: List[uuid.UUID], post_ids: List[uuid.UUID], cfg: SeedConfig) -> int:
-    upserts = 0
-    started_at = time.perf_counter()
-    total_posts = len(post_ids)
-    step = progress_step(total_posts)
-
-    for index, post_id in enumerate(post_ids, start=1):
-        sample_size = random.randint(1, len(user_ids))
-        viewers = random.sample(user_ids, sample_size)
-
-        for user_id in viewers:
-            view_id = uuid.uuid4()
-            viewed_at = now_utc()
-            count = random.randint(1, cfg.max_view_count_per_user_post)
-
-            cur.execute(
-                """
-                INSERT INTO post_views (id, post_id, user_id, first_viewed_at, last_viewed_at, view_count)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (post_id, user_id)
-                DO UPDATE SET
-                    last_viewed_at = EXCLUDED.last_viewed_at,
-                    view_count = GREATEST(post_views.view_count, EXCLUDED.view_count);
-                """,
-                (str(view_id), str(post_id), str(user_id), viewed_at, viewed_at, count),
-            )
-            upserts += 1
-        if index % step == 0 or index == total_posts:
-            print_progress("views/posts", index, total_posts, started_at)
-            print(f"[views] upserts so far: {upserts:,}")
-    return upserts
-
-
-def seed_comments(cur, user_ids: List[uuid.UUID], post_ids: List[uuid.UUID], cfg: SeedConfig) -> int:
-    inserted = 0
-    started_at = time.perf_counter()
-    total_posts = len(post_ids)
-    step = progress_step(total_posts)
-
-    for index, post_id in enumerate(post_ids, start=1):
-        comments_count = random.randint(0, cfg.max_comments_per_post)
-        for _ in range(comments_count):
-            comment_id = uuid.uuid4()
-            user_id = random.choice(user_ids)
-            content = random_comment()
-            ts = now_utc()
-
-            cur.execute(
-                """
-                INSERT INTO post_comments (id, post_id, user_id, content, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO NOTHING;
-                """,
-                (str(comment_id), str(post_id), str(user_id), content, ts, ts),
-            )
-            inserted += 1
-        if index % step == 0 or index == total_posts:
-            print_progress("comments/posts", index, total_posts, started_at)
-            print(f"[comments] inserted so far: {inserted:,}")
-    return inserted
-
-
 def main() -> None:
     cfg = load_config()
     total_started_at = time.perf_counter()
@@ -287,28 +169,11 @@ def main() -> None:
             conn.commit()
             print(f"[phase done] posts in {fmt_seconds(time.perf_counter() - phase_started_at)}")
 
-            phase_started_at = time.perf_counter()
-            likes = seed_likes(cur, users, posts, cfg)
-            conn.commit()
-            print(f"[phase done] likes in {fmt_seconds(time.perf_counter() - phase_started_at)}")
-
-            phase_started_at = time.perf_counter()
-            views = seed_views(cur, users, posts, cfg)
-            conn.commit()
-            print(f"[phase done] views in {fmt_seconds(time.perf_counter() - phase_started_at)}")
-
-            phase_started_at = time.perf_counter()
-            comments = seed_comments(cur, users, posts, cfg)
-            conn.commit()
-            print(f"[phase done] comments in {fmt_seconds(time.perf_counter() - phase_started_at)}")
-
     print("Seed completed")
     print(f"- total elapsed: {fmt_seconds(time.perf_counter() - total_started_at)}")
     print(f"- users: {len(users)}")
     print(f"- posts: {len(posts)}")
-    print(f"- likes attempts: {likes}")
-    print(f"- views upserts: {views}")
-    print(f"- comments: {comments}")
+    print("- likes/views/comments: skipped")
     print(f"Default password for seeded users: {cfg.default_password}")
 
 
