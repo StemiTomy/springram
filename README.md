@@ -35,7 +35,7 @@ docker compose logs -f app
 Comprobar readiness manualmente:
 
 ```bash
-curl http://localhost:8080/actuator/health/readiness
+curl http://localhost:${APP_PUBLIC_PORT:-8080}/actuator/health/readiness
 ```
 
 Logs en fichero (persistidos en la raíz del proyecto):
@@ -62,8 +62,50 @@ Para parar y limpiar:
 docker compose down
 ```
 
+## HTTPS directo en Spring (Let's Encrypt, sin Nginx)
+
+Puedes servir HTTPS directamente desde Spring Boot en Docker con certificados PEM de Let's Encrypt.
+
+### 1) Emitir certificado en el VPS
+
+```bash
+sudo certbot certonly --standalone --preferred-challenges http -d spapi.tudominio.com
+```
+
+### 2) Variables de entorno para producción
+
+En `.env` del servidor:
+
+```bash
+SPRING_PROFILES_ACTIVE=https
+SERVER_PORT=443
+APP_PUBLIC_PORT=443
+SSL_CERTS_DIR=/etc/letsencrypt/live/spapi.tudominio.com
+SERVER_SSL_CERTIFICATE=/certs/fullchain.pem
+SERVER_SSL_PRIVATE_KEY=/certs/privkey.pem
+```
+
+### 3) Arrancar en 443
+
+```bash
+docker compose up -d --build
+```
+
+Comprobar:
+
+```bash
+curl https://spapi.tudominio.com/actuator/health/readiness
+```
+
 
 # Referencias
+
+
+## SSL
+
+Para poner SSL simplemente hay que seguir estos pasos:
+
+https://docs.spring.io/spring-boot/reference/features/ssl.html
 
 ### **Scopes**
 

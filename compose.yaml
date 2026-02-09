@@ -12,10 +12,15 @@ services:
         max-size: '10m'
         max-file: '3'
     ports:
-      - '8080:8080'
+      - '${APP_PUBLIC_PORT:-8080}:${SERVER_PORT:-8080}'
     volumes:
       - './logs:/app/logs'
+      - '${SSL_CERTS_DIR:-./certs}:/certs:ro'
     environment:
+      - 'SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-}'
+      - 'SERVER_PORT=${SERVER_PORT:-8080}'
+      - 'SERVER_SSL_CERTIFICATE=${SERVER_SSL_CERTIFICATE:-}'
+      - 'SERVER_SSL_PRIVATE_KEY=${SERVER_SSL_PRIVATE_KEY:-}'
       - 'SPRING_DATASOURCE_URL=${DATABASE_URL}'
       - 'SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}'
       - 'SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}'
@@ -30,7 +35,7 @@ services:
       - 'APP_SOCIAL_REDIS_LIKES_TTL=${APP_SOCIAL_REDIS_LIKES_TTL:-PT24H}'
       - 'APP_SOCIAL_REDIS_POSTS_TTL=${APP_SOCIAL_REDIS_POSTS_TTL:-PT168H}'
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"' || exit 1"]
+      test: ["CMD-SHELL", "if [ \"${SERVER_PORT:-8080}\" = \"443\" ]; then wget --no-check-certificate -qO- \"https://localhost:${SERVER_PORT:-8080}/actuator/health/readiness\" | grep -q '\"status\":\"UP\"'; else wget -qO- \"http://localhost:${SERVER_PORT:-8080}/actuator/health/readiness\" | grep -q '\"status\":\"UP\"'; fi || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
