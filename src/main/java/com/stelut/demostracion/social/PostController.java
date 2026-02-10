@@ -11,6 +11,7 @@ import com.stelut.demostracion.social.dto.PostCommentResponse;
 import com.stelut.demostracion.social.dto.PostCommentsPageResponse;
 import com.stelut.demostracion.social.dto.PostResponse;
 import com.stelut.demostracion.social.dto.PostStatsResponse;
+import com.stelut.demostracion.social.mapper.PostMapper;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -38,9 +39,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class PostController {
 
 	private final SocialPostService socialPostService;
+	private final PostMapper postMapper; // mapstruct se usa aqui
 
-	public PostController(SocialPostService socialPostService) {
+	public PostController(SocialPostService socialPostService, PostMapper postMapper) {
 		this.socialPostService = socialPostService;
+		this.postMapper = postMapper;
 	}
 
 	@PostMapping
@@ -167,13 +170,8 @@ public class PostController {
 
 	private PostResponse toPostResponse(Post post, boolean likedByMe) {
 		SocialPostService.PostCounters counters = socialPostService.getPostCounters(post.getId());
-		return new PostResponse(
-				post.getId(),
-				post.getAuthor().getId(),
-				post.getAuthorDisplayName(),
-				post.getContent(),
-				post.getCreatedAt(),
-				post.getUpdatedAt(),
+		return postMapper.toPostResponse(
+				post,
 				counters.likes(),
 				counters.views(),
 				counters.comments(),

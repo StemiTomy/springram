@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.stelut.demostracion.social.dto.PostResponse;
 import com.stelut.demostracion.social.dto.UserPublicProfileResponse;
+import com.stelut.demostracion.social.mapper.PostMapper;
 import com.stelut.demostracion.user.User;
 import com.stelut.demostracion.user.UserRepository;
 
@@ -26,15 +27,18 @@ public class UserController {
 	private final UserRepository userRepository;
 	private final SocialSearchService socialSearchService;
 	private final SocialPostService socialPostService;
+	private final PostMapper postMapper;
 
 	public UserController(
 			UserRepository userRepository,
 			SocialSearchService socialSearchService,
-			SocialPostService socialPostService
+			SocialPostService socialPostService,
+			PostMapper postMapper
 	) {
 		this.userRepository = userRepository;
 		this.socialSearchService = socialSearchService;
 		this.socialPostService = socialPostService;
+		this.postMapper = postMapper;
 	}
 
 	@GetMapping("/{userId}")
@@ -57,13 +61,8 @@ public class UserController {
 		List<PostResponse> recentPostResponses = recentPosts.stream()
 				.map(post -> {
 					SocialPostService.PostCounters counters = socialPostService.getPostCounters(post.getId());
-					return new PostResponse(
-							post.getId(),
-							post.getAuthor().getId(),
-							post.getAuthorDisplayName(),
-							post.getContent(),
-							post.getCreatedAt(),
-							post.getUpdatedAt(),
+					return postMapper.toPostResponse(
+							post,
 							counters.likes(),
 							counters.views(),
 							counters.comments(),

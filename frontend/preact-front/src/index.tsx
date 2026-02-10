@@ -565,7 +565,11 @@ const I18N: Record<Language, Messages> = {
 const SESSION_KEY = 'springram_session_v1';
 const LANGUAGE_KEY = 'springram_language_v1';
 const FEED_PAGE_SIZE = 20;
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || 'http://localhost:8080';
+
+const raw = import.meta.env.VITE_API_BASE_URL as string | undefined;
+if (!raw) throw new Error('Missing VITE_API_BASE_URL');
+const API_BASE_URL = raw.replace(/\/$/, '');
+
 const READINESS_ENDPOINT = `${API_BASE_URL}/actuator/health/readiness`;
 const ANALYTICS_SUMMARY_ENDPOINT = `${API_BASE_URL}/api/v1/analytics/summary`;
 const DEMO_EMAIL = 'test@test.test';
