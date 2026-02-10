@@ -16,6 +16,7 @@ import com.stelut.demostracion.user.UserRepository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -184,8 +185,11 @@ public class SocialPostService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<Post> getFeed(int page, int size) {
-		PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+	public Page<Post> getFeed(Pageable pageable) {
+		if (pageable == null) {
+			Pageable fallback = PageRequest.ofSize(20).withSort(Sort.by(Sort.Direction.DESC, "createdAt"));
+			return postRepository.findAll(fallback);
+		}
 		return postRepository.findAll(pageable);
 	}
 
@@ -201,13 +205,13 @@ public class SocialPostService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<CommentSnapshot> listComments(UUID postId, int page, int size) {
+	public Page<CommentSnapshot> listComments(UUID postId, Pageable pageable) {
 		if (!postRepository.existsById(postId)) {
 			throw new ResponseStatusException(NOT_FOUND, "post not found");
 		}
 		return postCommentRepository.findByPostIdOrderByCreatedAtAsc(
 				postId,
-				PageRequest.of(page, size)
+				pageable == null ? PageRequest.ofSize(50) : pageable
 		).map(comment -> new CommentSnapshot(
 			comment.getId(),
 			comment.getPost().getId(),

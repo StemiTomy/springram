@@ -14,8 +14,9 @@ import com.stelut.demostracion.social.dto.PostStatsResponse;
 import com.stelut.demostracion.social.mapper.PostMapper;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -28,7 +29,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -109,10 +109,10 @@ public class PostController {
 	@GetMapping("/{postId}/comments")
 	public PostCommentsPageResponse listComments(
 			@PathVariable UUID postId,
-			@RequestParam(defaultValue = "0") @Min(0) int page,
-			@RequestParam(defaultValue = "50") @Min(1) @Max(200) int size
+			@PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.ASC)
+			Pageable pageable // pageable se usa aqui
 	) {
-		Page<SocialPostService.CommentSnapshot> commentsPage = socialPostService.listComments(postId, page, size);
+		Page<SocialPostService.CommentSnapshot> commentsPage = socialPostService.listComments(postId, pageable);
 		List<PostCommentResponse> items = commentsPage.getContent().stream()
 				.map(comment -> new PostCommentResponse(
 						comment.id(),
@@ -136,11 +136,11 @@ public class PostController {
 	@GetMapping("/feed")
 	public FeedResponse feed(
 			@AuthenticationPrincipal Jwt jwt,
-			@RequestParam(defaultValue = "0") @Min(0) int page,
-			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+			Pageable pageable // pageable se usa aqui
 	) {
 		UUID userId = requireUserId(jwt);
-		Page<Post> feed = socialPostService.getFeed(page, size);
+		Page<Post> feed = socialPostService.getFeed(pageable);
 		Set<UUID> postIds = feed.getContent().stream().map(Post::getId).collect(java.util.stream.Collectors.toSet());
 		Set<UUID> likedPostIds = socialPostService.findLikedPostIds(userId, postIds);
 
