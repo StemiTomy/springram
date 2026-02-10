@@ -11,6 +11,7 @@ import com.stelut.demostracion.auth.dto.RegisterRequest;
 import com.stelut.demostracion.auth.dto.UserResponse;
 import com.stelut.demostracion.user.User;
 import com.stelut.demostracion.user.UserRepository;
+import com.stelut.demostracion.user.mapper.UserMapper;
 
 import jakarta.validation.Valid;
 
@@ -32,10 +33,12 @@ public class AuthController {
 
 	private final AuthService authService;
 	private final UserRepository userRepository;
+	private final UserMapper userMapper; // mapstruct se usa aqui
 
-	public AuthController(AuthService authService, UserRepository userRepository) {
+	public AuthController(AuthService authService, UserRepository userRepository, UserMapper userMapper) {
 		this.authService = authService;
 		this.userRepository = userRepository;
+		this.userMapper = userMapper;
 	}
 
 	@PostMapping("/register")
@@ -60,12 +63,7 @@ public class AuthController {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found"));
 
-		return new UserResponse(
-				user.getId(),
-				user.getEmail(),
-				user.getRole().name(),
-				user.getPreferredLanguage()
-		);
+		return userMapper.toUserResponse(user);
 	}
 
 	@GetMapping("/preferences/language")
